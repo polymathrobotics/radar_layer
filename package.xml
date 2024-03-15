@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>radar_layer</name>
+  <version>1.0.0</version>
+  <description>Run-time plugin for Costmap2D radar layer</description>
+  <maintainer email="alex@polymathrobotics.com">Alexander Yuen</maintainer>
+  <license>BSD-3-Clause</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>nav2_costmap_2d</depend>
+  <depend>pluginlib</depend>
+  <depend>rclcpp</depend>
+  <depend>radar_msgs</depend>
+  <depend>message_filters</depend>
+  <depend>tf2_ros</depend>
+
+  <test_depend>ament_lint_auto</test_depend>
+
+  <test_depend>ament_cmake_lint_cmake</test_depend>
+  <test_depend>ament_cmake_xmllint</test_depend>
+  <test_depend>ament_cmake_uncrustify</test_depend>
+  <test_depend>ament_cmake_gtest</test_depend>
+  
+  <export>
+    <costmap_2d plugin="${prefix}/radar_layer.xml" />
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
