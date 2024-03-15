@@ -1,0 +1,5 @@
+<library path="radar_layer_core">
+  <class name="radar_layer/RadarLayer" type="radar_layer::RadarLayer" base_class_type="nav2_costmap_2d::Layer">
+    <description>This is a plugin which turns radar objects into obstacles</description>
+  </class>
+</library>
