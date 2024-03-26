@@ -209,7 +209,6 @@ void RadarLayer::updateBounds(
           unsigned int mx, my;
 
           if (!worldToMap(px, py, mx, my)) {
-            RCLCPP_INFO(logger_, "Computing map coords failed");
             continue;
           }
           unsigned int index = getIndex(mx, my);
