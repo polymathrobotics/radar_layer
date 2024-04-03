@@ -76,7 +76,7 @@ void RadarLayer::onInitialize()
       rclcpp::ParameterValue(std::string("")));
     declareParameter(
       source + "." + "data_type",
-      rclcpp::ParameterValue(std::string("RadarTrack")));
+      rclcpp::ParameterValue(std::string("ObstacleArray")));
 
     node->get_parameter(name_ + "." + source + "." + "topic", topic);
     node->get_parameter(
@@ -84,12 +84,12 @@ void RadarLayer::onInitialize()
       sensor_frame);
     node->get_parameter(name_ + "." + source + "." + "data_type", data_type);
 
-    if (!(data_type == "RadarTracks")) {
+    if (!(data_type == "ObstacleArray")) {
       RCLCPP_FATAL(
         logger_,
-        "Only topics that use radar tracks are currently supported");
+        "Only topics that use obstacle array are currently supported");
       throw std::runtime_error(
-              "Only topics that use radar tracks are currently supported");
+              "Only topics that use obstacle array are currently supported");
     }
 
     RCLCPP_INFO(
@@ -102,13 +102,13 @@ void RadarLayer::onInitialize()
     rmw_qos_profile_t custom_qos_profile = rmw_qos_profile_sensor_data;
     custom_qos_profile.depth = 50;
 
-    radar_observation_buffers_.push_back(
-      std::shared_ptr<radar_msgs::msg::RadarTracks>(
-        new radar_msgs::msg::RadarTracks()));
+    obstacle_buffers_.push_back(
+      std::shared_ptr<nav2_dynamic_msgs::msg::ObstacleArray>(
+        new nav2_dynamic_msgs::msg::ObstacleArray()));
 
     // base message filter subscriber, takes message type RadarTracks and
     // subscribes the current node, which is a lifecyclenode, to the topic
-    auto sub = std::make_shared<message_filters::Subscriber<radar_msgs::msg::RadarTracks,
+    auto sub = std::make_shared<message_filters::Subscriber<nav2_dynamic_msgs::msg::ObstacleArray,
         rclcpp_lifecycle::LifecycleNode>>(
       node,
       topic,
@@ -122,7 +122,7 @@ void RadarLayer::onInitialize()
     // (https://docs.ros2.org/foxy/api/tf2_ros/classtf2__ros_1_1MessageFilter.html)
     // TODO: what if message type is not stamped with a TF frame?
     auto filter =
-      std::make_shared<tf2_ros::MessageFilter<radar_msgs::msg::RadarTracks>>(
+      std::make_shared<tf2_ros::MessageFilter<nav2_dynamic_msgs::msg::ObstacleArray>>(
       *sub,
       *tf_,
       global_frame_,
@@ -133,9 +133,9 @@ void RadarLayer::onInitialize()
 
     filter->registerCallback(
       std::bind(
-        &RadarLayer::radarCallback, this,
+        &RadarLayer::obstacleCallback, this,
         std::placeholders::_1,
-        radar_observation_buffers_.back()));
+        obstacle_buffers_.back()));
 
     observation_subscribers_.push_back(sub);
 
@@ -176,18 +176,18 @@ void RadarLayer::updateBounds(
   touch(max_bound, max_bound, min_x, min_y, max_x, max_y);
   touch(min_bound, min_bound, min_x, min_y, max_x, max_y);
 
-  for (std::vector<std::shared_ptr<radar_msgs::msg::RadarTracks>>::
-    const_iterator it = radar_observation_buffers_.begin();
-    it != radar_observation_buffers_.end(); ++it)
+  for (std::vector<std::shared_ptr<nav2_dynamic_msgs::msg::ObstacleArray>>::
+    const_iterator it = obstacle_buffers_.begin();
+    it != obstacle_buffers_.end(); ++it)
   {
-    const std::shared_ptr<radar_msgs::msg::RadarTracks> & radar_observation =
+    const std::shared_ptr<nav2_dynamic_msgs::msg::ObstacleArray> & obstacle_array =
       *it;
     int number_of_objects =
-      radar_observation->tracks.size();
+      obstacle_array->obstacles.size();
 
     for (size_t i = 0; i < number_of_objects; i++) {
-      double length = radar_observation->tracks[i].size.x;
-      double width = radar_observation->tracks[i].size.y;
+      double length = obstacle_array->obstacles[i].size.x;
+      double width = obstacle_array->obstacles[i].size.y;
 
       int length_in_grid = int(length / resolution_);
       int width_in_grid = int(width / resolution_);
@@ -196,8 +196,8 @@ void RadarLayer::updateBounds(
       for (int x_i = 0; x_i < length_in_grid; x_i++) {
         for (int y_i = 0; y_i < width_in_grid; y_i++) {
           transformPoint(
-            radar_observation->header,
-            radar_observation->tracks[i],
+            obstacle_array->header,
+            obstacle_array->obstacles[i],
             point_in_global_frame,
             -length / 2 + x_i * resolution_,
             -width / 2 + y_i * resolution_);
@@ -293,43 +293,44 @@ rcl_interfaces::msg::SetParametersResult RadarLayer::dynamicParametersCallback(
   return result;
 }
 
-void RadarLayer::radarCallback(
-  radar_msgs::msg::RadarTracks::ConstSharedPtr message,
-  const std::shared_ptr<radar_msgs::msg::RadarTracks> & buffer)
+void RadarLayer::obstacleCallback(
+  nav2_dynamic_msgs::msg::ObstacleArray::ConstSharedPtr message,
+  const std::shared_ptr<nav2_dynamic_msgs::msg::ObstacleArray> & buffer)
 {
   *buffer = *message;
 }
 
 bool RadarLayer::transformPoint(
-  const std_msgs::msg::Header radar_header,
-  const radar_msgs::msg::RadarTrack & radar_track,
+  const std_msgs::msg::Header obstacle_header,
+  const nav2_dynamic_msgs::msg::Obstacle & obstacle,
   geometry_msgs::msg::PointStamped & out_point,
   double dx = 0.0,
   double dy =
   0.0) const
 {
-  geometry_msgs::msg::PointStamped point_in_radar_frame;
+  geometry_msgs::msg::PointStamped point_in_obstacle_frame;
 
-  point_in_radar_frame.header.stamp = radar_header.stamp;
-  point_in_radar_frame.header.frame_id = radar_header.frame_id;
-  point_in_radar_frame.point.x = radar_track.position.x + dx;
-  point_in_radar_frame.point.y = radar_track.position.y + dy;
-  point_in_radar_frame.point.z = 0;
+  point_in_obstacle_frame.header.stamp = obstacle_header.stamp;
+  point_in_obstacle_frame.header.frame_id = obstacle_header.frame_id;
+  point_in_obstacle_frame.point.x = obstacle.position.x + dx;
+  point_in_obstacle_frame.point.y = obstacle.position.y + dy;
+  point_in_obstacle_frame.point.z = 0;
 
 
   try {
     tf_->transform(
-      point_in_radar_frame,
+      point_in_obstacle_frame,
       out_point,
       global_frame_,
       transform_tolerance_);
-    out_point.header.stamp = point_in_radar_frame.header.stamp;
+    out_point.header.stamp = point_in_obstacle_frame.header.stamp;
     return true;
   } catch (tf2::TransformException & ex) {
     RCLCPP_ERROR(logger_, "Exception in transformPose: %s", ex.what());
   }
   return false;
 }
+
 } // namespace radar_layer
 
 // This is the macro allowing a radar_layer::RadarLayer class

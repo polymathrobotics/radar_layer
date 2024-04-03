@@ -10,6 +10,8 @@
 #include "radar_msgs/msg/radar_tracks.hpp"
 #include "tf2_ros/message_filter.h"
 #include "message_filters/subscriber.h"
+#include "nav2_dynamic_msgs/msg/obstacle.hpp"
+#include "nav2_dynamic_msgs/msg/obstacle_array.hpp"
 
 namespace radar_layer
 {
@@ -102,17 +104,17 @@ public:
     std::vector<rclcpp::Parameter> parameters);
 
   /**
-   * @brief  A callback to handle buffering RadarTracks messages
+   * @brief  A callback to handle buffering ObstacleArray messages
    * @param message The message returned from a message notifier
    * @param buffer A pointer to the observation buffer to update
    */
-  void radarCallback(
-    radar_msgs::msg::RadarTracks::ConstSharedPtr message,
-    const std::shared_ptr<radar_msgs::msg::RadarTracks> & buffer);
+  void obstacleCallback(
+    nav2_dynamic_msgs::msg::ObstacleArray::ConstSharedPtr message,
+    const std::shared_ptr<nav2_dynamic_msgs::msg::ObstacleArray> & buffer);
 
   bool transformPoint(
-    const std_msgs::msg::Header radar_frame,
-    const radar_msgs::msg::RadarTrack & radar_track,
+    const std_msgs::msg::Header obstacle_frame,
+    const nav2_dynamic_msgs::msg::Obstacle & obstacle_track,
     geometry_msgs::msg::PointStamped & out_point,
     double dx,
     double dy)
@@ -123,6 +125,10 @@ private:
   std::vector<std::shared_ptr<radar_msgs::msg::RadarTracks>>
   radar_observation_buffers_;
 
+  /// @brief Used to store observations from obstackle tracking
+  std::vector<std::shared_ptr<nav2_dynamic_msgs::msg::ObstacleArray>>
+  obstacle_buffers_;
+  
   /// @brief Used for the observation message filters
   std::vector<std::shared_ptr<message_filters::SubscriberBase<rclcpp_lifecycle::LifecycleNode>>>
   observation_subscribers_;
