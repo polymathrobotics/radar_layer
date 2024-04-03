@@ -28,6 +28,7 @@ find_package(pluginlib REQUIRED)
 find_package(radar_msgs)
 find_package(message_filters REQUIRED)
 find_package(tf2_ros REQUIRED)
+find_package(nav2_dynamic_msgs REQUIRED)
 
 set(dep_pkgs
     rclcpp
@@ -35,7 +36,8 @@ set(dep_pkgs
     pluginlib
     radar_msgs
     message_filters
-    tf2_ros)
+    tf2_ros
+    nav2_dynamic_msgs)
 
 # === Build ===
 
