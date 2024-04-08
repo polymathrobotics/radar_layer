@@ -1,0 +1,9 @@
+repositories:
+  navigation2_dynamic:
+    type: git
+    url: git@gitlab.com:polymathrobotics/third_party/navigation2_dynamic.git
+    version: master
+  radar_layer:
+    type: git
+    url: git@gitlab.com:polymathrobotics/radar_layer.git
+    version: main

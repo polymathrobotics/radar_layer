@@ -128,7 +128,7 @@ private:
   /// @brief Used to store observations from obstackle tracking
   std::vector<std::shared_ptr<nav2_dynamic_msgs::msg::ObstacleArray>>
   obstacle_buffers_;
-  
+
   /// @brief Used for the observation message filters
   std::vector<std::shared_ptr<message_filters::SubscriberBase<rclcpp_lifecycle::LifecycleNode>>>
   observation_subscribers_;
