@@ -1,0 +1,7 @@
+variables:
+  REPOS_FILE: repos.yaml
+
+include:
+- project: 'polymathrobotics/ci/ci_templates'
+  ref: main
+  file: '/ros/ros2_package.yml'
