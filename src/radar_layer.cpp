@@ -200,13 +200,15 @@ void RadarLayer::updateBounds(
 
       geometry_msgs::msg::Point projected_point;
       projected_point = obstacle_array->obstacles[i].position;
+
+      nav2_dynamic_msgs::msg::Obstacle obstacle = obstacle_array->obstacles[i];
       
       for (double time = 0.0; time < projection_time_; time += simulation_time_step_) {
 
         for (int x_i = 0; x_i < length_in_grid; x_i++) {
           for (int y_i = 0; y_i < width_in_grid; y_i++) {
             
-            transformPoint(obstacle_array->header, obstacle_array->obstacles[i], point_in_global_frame, -length / 2 + x_i * resolution_, -width / 2 + y_i * resolution_);
+            transformPoint(obstacle_array->header, obstacle, point_in_global_frame, -length / 2 + x_i * resolution_, -width / 2 + y_i * resolution_);
             double px = point_in_global_frame.point.x;
             double py = point_in_global_frame.point.y;
 
@@ -221,9 +223,9 @@ void RadarLayer::updateBounds(
           }
         }
 
-        projected_point = projectPoint(projected_point, obstacle_array->obstacles[i].velocity, simulation_time_step_);
-        obstacle_array->obstacles[i].position.x = projected_point.x;
-        obstacle_array->obstacles[i].position.y = projected_point.y;
+        projected_point = projectPoint(projected_point, obstacle.velocity, simulation_time_step_);
+        obstacle.position.x = projected_point.x;
+        obstacle.position.y = projected_point.y;
 
       }
     }
