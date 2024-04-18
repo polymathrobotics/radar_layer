@@ -143,7 +143,7 @@ private:
 
   geometry_msgs::msg::Point projectPoint(const geometry_msgs::msg::Point &point,
     const geometry_msgs::msg::Vector3 &velocity, 
-    double projection_time) 
+    double projection_time); 
 
   bool rolling_window_;
   int combination_method_;

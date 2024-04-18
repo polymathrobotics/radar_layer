@@ -340,7 +340,7 @@ bool RadarLayer::transformPoint(
   return false;
 }
 
-geometry_msgs::msg::Point VelocityScaler::projectPoint(const geometry_msgs::msg::Point &point,
+geometry_msgs::msg::Point RadarLayer::projectPoint(const geometry_msgs::msg::Point &point,
   const geometry_msgs::msg::Vector3 &velocity, 
   double projection_time) 
 {
