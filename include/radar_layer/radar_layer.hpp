@@ -141,10 +141,16 @@ private:
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr
     dyn_params_handler_;
 
+  geometry_msgs::msg::Point projectPoint(const geometry_msgs::msg::Point &point,
+    const geometry_msgs::msg::Vector3 &velocity, 
+    double projection_time) 
+
   bool rolling_window_;
   int combination_method_;
   double min_bound;
   double max_bound;
+  double projection_time_;
+  double simulation_time_step_;
   std::string global_frame_;
 
   tf2::Duration transform_tolerance_;

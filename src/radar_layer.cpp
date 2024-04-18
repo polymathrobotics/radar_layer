@@ -36,6 +36,9 @@ void RadarLayer::onInitialize()
     "observation_sources",
     rclcpp::ParameterValue(std::string("")));
 
+  declareParameter("projection_time", rclcpp::ParameterValue(0.1));
+  declareParameter("simulation_time_step", rclcpp::ParameterValue(0.1));
+
   auto node = node_.lock();
 
   if (!node) {
@@ -45,7 +48,10 @@ void RadarLayer::onInitialize()
   node->get_parameter(name_ + "." + "enabled", enabled_);
   node->get_parameter(name_ + "." + "combination_method", combination_method_);
   node->get_parameter(name_ + "." + "observation_sources", topics_string);
-  node->get_parameter("transform_tolerance", transform_tolerance);
+  node->get_parameter(name_ + "." + "projection_time", projection_time_);
+  node->get_parameter(name_ + "." + "simulation_time_step", simulation_time_step_);
+  node->get_parameter(name_ + "." + "transform_tolerance", transform_tolerance);
+
   transform_tolerance_ = tf2::durationFromSec(transform_tolerance);
 
   rolling_window_ = layered_costmap_->isRolling();
@@ -192,28 +198,31 @@ void RadarLayer::updateBounds(
       int length_in_grid = int(length / resolution_);
       int width_in_grid = int(width / resolution_);
 
+      geometry_msgs::msg::Point projected_point;
+      projected_point = obstacle_array->obstacles[i].position;
+      
+      for (double time = simulation_time_step_; time < projection_time_; time += simulation_time_step_) {
+      
+        for (int x_i = 0; x_i < length_in_grid; x_i++) {
+          for (int y_i = 0; y_i < width_in_grid; y_i++) {
+            
+            transformPoint(obstacle_array->header, obstacle_array->obstacles[i], point_in_global_frame, -length / 2 + x_i * resolution_, -width / 2 + y_i * resolution_);
+            double px = point_in_global_frame.point.x;
+            double py = point_in_global_frame.point.y;
 
-      for (int x_i = 0; x_i < length_in_grid; x_i++) {
-        for (int y_i = 0; y_i < width_in_grid; y_i++) {
-          transformPoint(
-            obstacle_array->header,
-            obstacle_array->obstacles[i],
-            point_in_global_frame,
-            -length / 2 + x_i * resolution_,
-            -width / 2 + y_i * resolution_);
+            // now we need to compute the map coordinates for the observation
+            unsigned int mx, my;
 
-          double px = point_in_global_frame.point.x;
-          double py = point_in_global_frame.point.y;
-
-          // now we need to compute the map coordinates for the observation
-          unsigned int mx, my;
-
-          if (!worldToMap(px, py, mx, my)) {
-            continue;
+            if (!worldToMap(px, py, mx, my)) {
+              continue;
+            }
+            unsigned int index = getIndex(mx, my);
+            costmap_[index] = LETHAL_OBSTACLE;
           }
-          unsigned int index = getIndex(mx, my);
-          costmap_[index] = LETHAL_OBSTACLE;
         }
+
+        projected_point = projectPoint(projected_point, obstacle_array->obstacles[i].velocity, simulation_time_step_);
+
       }
     }
   }
@@ -330,6 +339,20 @@ bool RadarLayer::transformPoint(
   }
   return false;
 }
+
+geometry_msgs::msg::Point VelocityScaler::projectPoint(const geometry_msgs::msg::Point &point,
+  const geometry_msgs::msg::Vector3 &velocity, 
+  double projection_time) 
+{
+  
+  geometry_msgs::msg::Point projected_point = point;
+
+  projected_point.x += projection_time * velocity[0];
+  projected_point.y += projection_time * velocity[1];
+
+  return projected_point;
+}
+
 
 } // namespace radar_layer
 
