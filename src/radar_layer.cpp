@@ -192,6 +192,25 @@ void RadarLayer::updateBounds(
       obstacle_array->obstacles.size();
 
     for (size_t i = 0; i < number_of_objects; i++) {
+
+      geometry_msgs::msg::TransformStamped base_link_to_sensor_transform;
+      base_link_to_sensor_transform = tf_buffer_->lookupTransform("base_link", obstacle_array->header.frame_id, rclcpp::Time(0), transform_tolerance_);
+      
+      tf2::Quaternion q(
+      base_link_to_sensor_transform.transform.rotation.x,
+      base_link_to_sensor_transform.transform.rotation.y,
+      base_link_to_sensor_transform.transform.rotation.z,
+      base_link_to_sensor_transform.transform.rotation.w);
+  
+      tf2::Matrix3x3 m(q);
+      double roll, pitch, yaw;
+      m.getRPY(roll, pitch, yaw);
+
+      RCLCPP_INFO(logger_, "RadarLayer::x %f", base_link_to_sensor_transform.transform.translation.x);
+      RCLCPP_INFO(logger_, "RadarLayer::y %f", base_link_to_sensor_transform.transform.translation.y);
+      RCLCPP_INFO(logger_, "RadarLayer::z %f", base_link_to_sensor_transform.transform.translation.z);
+      RCLCPP_INFO(logger_, "RadarLayer::yaw %f", yaw);
+      
       double length = obstacle_array->obstacles[i].size.x;
       double width = obstacle_array->obstacles[i].size.y;
 
