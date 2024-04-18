@@ -224,6 +224,8 @@ void RadarLayer::updateBounds(
         }
 
         projected_point = projectPoint(projected_point, obstacle_array->obstacles[i].velocity, simulation_time_step_);
+        obstacle_array->obstacles[i].position.x = projected_point.x
+        obstacle_array->obstacles[i].position.y = projected_point.y
 
       }
     }
