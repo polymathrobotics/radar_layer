@@ -194,7 +194,7 @@ void RadarLayer::updateBounds(
     for (size_t i = 0; i < number_of_objects; i++) {
 
       geometry_msgs::msg::TransformStamped base_link_to_sensor_transform;
-      base_link_to_sensor_transform = tf_buffer_->lookupTransform("base_link", obstacle_array->header.frame_id, rclcpp::Time(0), transform_tolerance_);
+      base_link_to_sensor_transform = tf_->lookupTransform("base_link", obstacle_array->header.frame_id, rclcpp::Time(0), transform_tolerance_);
       
       tf2::Quaternion q(
       base_link_to_sensor_transform.transform.rotation.x,
