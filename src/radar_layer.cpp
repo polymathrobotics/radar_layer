@@ -36,7 +36,7 @@ void RadarLayer::onInitialize()
     "observation_sources",
     rclcpp::ParameterValue(std::string("")));
 
-  declareParameter("projection_time", rclcpp::ParameterValue(1.0));
+  declareParameter("projection_time", rclcpp::ParameterValue(3.0));
   declareParameter("simulation_time_step", rclcpp::ParameterValue(0.1));
 
   auto node = node_.lock();
@@ -203,8 +203,6 @@ void RadarLayer::updateBounds(
       
       for (double time = 0.0; time < projection_time_; time += simulation_time_step_) {
 
-        RCLCPP_INFO(logger_, "projection: %f", time);
-      
         for (int x_i = 0; x_i < length_in_grid; x_i++) {
           for (int y_i = 0; y_i < width_in_grid; y_i++) {
             
