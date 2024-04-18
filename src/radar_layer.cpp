@@ -201,7 +201,7 @@ void RadarLayer::updateBounds(
       geometry_msgs::msg::Point projected_point;
       projected_point = obstacle_array->obstacles[i].position;
       
-      for (double time = simulation_time_step_; time < projection_time_; time += simulation_time_step_) {
+      for (double time = 0.0; time < projection_time_; time += simulation_time_step_) {
 
         RCLCPP_INFO(logger_, "projection");
       
