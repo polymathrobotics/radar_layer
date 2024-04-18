@@ -210,6 +210,8 @@ void RadarLayer::updateBounds(
       RCLCPP_INFO(logger_, "RadarLayer::y %f", base_link_to_sensor_transform.transform.translation.y);
       RCLCPP_INFO(logger_, "RadarLayer::z %f", base_link_to_sensor_transform.transform.translation.z);
       RCLCPP_INFO(logger_, "RadarLayer::yaw %f", yaw);
+      RCLCPP_INFO(logger_, "RadarLayer::pitch %f", pitch);
+      RCLCPP_INFO(logger_, "RadarLayer::roll %f", roll);
       
       double length = obstacle_array->obstacles[i].size.x;
       double width = obstacle_array->obstacles[i].size.y;
