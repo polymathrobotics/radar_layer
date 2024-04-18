@@ -349,7 +349,7 @@ geometry_msgs::msg::Point RadarLayer::projectPoint(const geometry_msgs::msg::Poi
   
   geometry_msgs::msg::Point projected_point = point;
 
-  projected_point.x += projection_time * velocity.x;
+  projected_point.x += projection_time * 1.0;
   projected_point.y += projection_time * velocity.y;
 
   return projected_point;
