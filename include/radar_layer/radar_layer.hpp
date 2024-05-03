@@ -12,6 +12,9 @@
 #include "message_filters/subscriber.h"
 #include "nav2_dynamic_msgs/msg/obstacle.hpp"
 #include "nav2_dynamic_msgs/msg/obstacle_array.hpp"
+#include <Eigen/Dense>
+#include <cmath>
+
 
 namespace radar_layer
 {
@@ -72,6 +75,16 @@ public:
     int min_j,
     int max_i,
     int max_j);
+
+  Eigen::VectorXd projectMean(
+    nav2_dynamic_msgs::msg::Obstacle obstacle,
+    double sample_time,
+    int time_steps);
+
+  Eigen::MatrixXd projectCovariance(
+    nav2_dynamic_msgs::msg::Obstacle obstacle,
+    double sample_time,
+    int time_steps);
 
   /**
    * @brief Deactivate the layer
