@@ -331,6 +331,46 @@ bool RadarLayer::transformPoint(
   return false;
 }
 
+Eigen::VectorXd RadarLayer::projectMean(
+  nav2_dynamic_msgs::msg::Obstacle obstacle,
+  double sample_time,
+  int time_steps
+)
+{
+  Eigen::VectorXd position(2);
+  Eigen::VectorXd velocity(2);
+  Eigen::VectorXd position_projected(2);
+
+  position(0) = obstacle.position.x;
+  position(1) = obstacle.position.y;
+  velocity(0) = obstacle.velocity.x;
+  velocity(1) = obstacle.velocity.y;
+
+  position_projected = position + time_steps*sample_time*velocity;
+
+  return position_projected;
+}
+
+Eigen::MatrixXd RadarLayer::projectCovariance(
+  nav2_dynamic_msgs::msg::Obstacle obstacle,
+  double sample_time,
+  int time_steps
+)
+{
+  Eigen::MatrixXd position_covariance(2,2);
+  Eigen::MatrixXd velocity_covariance(2,2);
+  Eigen::MatrixXd position_covariance_projected(2,2);
+
+  position_covariance(0,0) = obstacle.position_covariance.x;
+  position_covariance(1,1) = obstacle.position_covariance.y;
+  velocity_covariance(0,0) = obstacle.velocity_covariance.x;
+  velocity_covariance(1,1) = obstacle.velocity_covariance.y;
+
+  position_covariance_projected = position_covariance + pow(time_steps*sample_time,2)*velocity_covariance;
+
+  return position_covariance_projected;
+}
+
 } // namespace radar_layer
 
 // This is the macro allowing a radar_layer::RadarLayer class
