@@ -314,6 +314,7 @@ void RadarLayer::findUuid(
 
   int number_of_obstacles = obstacles->obstacles.size();
   int number_of_detections = detections->obstacles.size();
+  std::vector<std::pair<size_t, size_t>> matched_indices;
 
   if (number_of_detections > 0) { //If there are detections
     if (number_of_obstacles == 0) { //Empty Obstacle List, likely first detection
@@ -327,6 +328,8 @@ void RadarLayer::findUuid(
               obstacles->obstacles[j].uuid.uuid.data(), 16) == 0)
           {
             RCLCPP_DEBUG(logger_, "Matching UUIDs Found");
+            matched_indices.push_back({i, j});
+            break;
           }
         }
       }
