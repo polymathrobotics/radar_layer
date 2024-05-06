@@ -321,7 +321,7 @@ void RadarLayer::findUuid(
   rclcpp::Duration duration = detection_time - obstacle_time;
   double dt = duration.seconds() + duration.nanoseconds() / 1e9f;
 
-  RCLCPP_DEBUG(logger_, "dt: %f", dt);
+  RCLCPP_INFO(logger_, "dt: %f", dt);
 
   if (number_of_detections > 0) { //If there are detections
     if (number_of_obstacles == 0) { //Empty Obstacle List, likely first detection
