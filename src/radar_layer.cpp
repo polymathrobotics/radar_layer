@@ -327,6 +327,7 @@ void RadarLayer::findUuid(
     if (number_of_obstacles == 0) { //Empty Obstacle List, likely first detection
       *obstacles = *detections;
     } else {
+      obstacles->header.stamp = detections->header.stamp;
       //TODO: Vectorize this nested for loop for efficiency (Alex)
       for (size_t i = 0; i < number_of_detections; i++) {
         for (size_t j = 0; j < number_of_obstacles; j++) {
