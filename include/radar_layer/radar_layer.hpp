@@ -123,7 +123,12 @@ public:
    */
   void obstacleCallback(
     nav2_dynamic_msgs::msg::ObstacleArray::ConstSharedPtr message,
-    const std::shared_ptr<nav2_dynamic_msgs::msg::ObstacleArray> & buffer);
+    const std::shared_ptr<nav2_dynamic_msgs::msg::ObstacleArray> & detection_buffer,
+    const std::shared_ptr<nav2_dynamic_msgs::msg::ObstacleArray> & obstacle_buffer);
+
+  void findUuid(
+    const nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr obstacles,
+    const nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr detections);
 
   bool transformPoint(
     const std_msgs::msg::Header obstacle_frame,
@@ -141,6 +146,10 @@ private:
   /// @brief Used to store observations from obstackle tracking
   std::vector<std::shared_ptr<nav2_dynamic_msgs::msg::ObstacleArray>>
   obstacle_buffers_;
+
+  /// @brief Used to store observations from obstackle tracking
+  std::vector<std::shared_ptr<nav2_dynamic_msgs::msg::ObstacleArray>>
+  detection_buffers_;
 
   /// @brief Used for the observation message filters
   std::vector<std::shared_ptr<message_filters::SubscriberBase<rclcpp_lifecycle::LifecycleNode>>>

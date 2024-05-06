@@ -102,6 +102,10 @@ void RadarLayer::onInitialize()
     rmw_qos_profile_t custom_qos_profile = rmw_qos_profile_sensor_data;
     custom_qos_profile.depth = 50;
 
+    detection_buffers_.push_back(
+      std::shared_ptr<nav2_dynamic_msgs::msg::ObstacleArray>(
+        new nav2_dynamic_msgs::msg::ObstacleArray()));
+
     obstacle_buffers_.push_back(
       std::shared_ptr<nav2_dynamic_msgs::msg::ObstacleArray>(
         new nav2_dynamic_msgs::msg::ObstacleArray()));
@@ -135,6 +139,7 @@ void RadarLayer::onInitialize()
       std::bind(
         &RadarLayer::obstacleCallback, this,
         std::placeholders::_1,
+        detection_buffers_.back(),
         obstacle_buffers_.back()));
 
     observation_subscribers_.push_back(sub);
@@ -295,9 +300,39 @@ rcl_interfaces::msg::SetParametersResult RadarLayer::dynamicParametersCallback(
 
 void RadarLayer::obstacleCallback(
   nav2_dynamic_msgs::msg::ObstacleArray::ConstSharedPtr message,
-  const std::shared_ptr<nav2_dynamic_msgs::msg::ObstacleArray> & buffer)
+  const std::shared_ptr<nav2_dynamic_msgs::msg::ObstacleArray> & detection_buffer,
+  const std::shared_ptr<nav2_dynamic_msgs::msg::ObstacleArray> & obstacle_buffer)
 {
-  *buffer = *message;
+  *detection_buffer = *message;
+  findUuid(obstacle_buffer, detection_buffer);
+}
+
+void RadarLayer::findUuid(
+  const nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr obstacles,
+  const nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr detections)
+{
+
+  int number_of_obstacles = obstacles->obstacles.size();
+  int number_of_detections = detections->obstacles.size();
+
+  if (number_of_detections > 0) { //If there are detections
+    if (number_of_obstacles == 0) { //Empty Obstacle List, likely first detection
+      *obstacles = *detections;
+    } else {
+      //TODO: Vectorize this nested for loop for efficiency (Alex)
+      for (size_t i = 0; i < number_of_detections; i++) {
+        for (size_t j = 0; j < number_of_obstacles; j++) {
+          if (memcmp(
+              detections->obstacles[i].uuid.uuid.data(),
+              obstacles->obstacles[j].uuid.uuid.data(), 16) == 0)
+          {
+            RCLCPP_DEBUG(logger_, "Matching UUIDs Found");
+          }
+        }
+      }
+      *obstacles = *detections;
+    }
+  }
 }
 
 bool RadarLayer::transformPoint(
@@ -346,7 +381,7 @@ Eigen::VectorXd RadarLayer::projectMean(
   velocity(0) = obstacle.velocity.x;
   velocity(1) = obstacle.velocity.y;
 
-  position_projected = position + time_steps*sample_time*velocity;
+  position_projected = position + time_steps * sample_time * velocity;
 
   return position_projected;
 }
@@ -357,16 +392,17 @@ Eigen::MatrixXd RadarLayer::projectCovariance(
   int time_steps
 )
 {
-  Eigen::MatrixXd position_covariance(2,2);
-  Eigen::MatrixXd velocity_covariance(2,2);
-  Eigen::MatrixXd position_covariance_projected(2,2);
+  Eigen::MatrixXd position_covariance(2, 2);
+  Eigen::MatrixXd velocity_covariance(2, 2);
+  Eigen::MatrixXd position_covariance_projected(2, 2);
 
-  position_covariance(0,0) = obstacle.position_covariance.x;
-  position_covariance(1,1) = obstacle.position_covariance.y;
-  velocity_covariance(0,0) = obstacle.velocity_covariance.x;
-  velocity_covariance(1,1) = obstacle.velocity_covariance.y;
+  position_covariance(0, 0) = obstacle.position_covariance.x;
+  position_covariance(1, 1) = obstacle.position_covariance.y;
+  velocity_covariance(0, 0) = obstacle.velocity_covariance.x;
+  velocity_covariance(1, 1) = obstacle.velocity_covariance.y;
 
-  position_covariance_projected = position_covariance + pow(time_steps*sample_time,2)*velocity_covariance;
+  position_covariance_projected = position_covariance +
+    pow(time_steps * sample_time, 2) * velocity_covariance;
 
   return position_covariance_projected;
 }
