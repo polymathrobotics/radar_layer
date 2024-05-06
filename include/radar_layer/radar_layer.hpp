@@ -130,6 +130,12 @@ public:
     const nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr obstacles,
     const nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr detections);
 
+  void clearUnmatchedObstacles(int number_of_obstacles, 
+    std::vector<std::pair<size_t, size_t>> matched_indices, 
+    const nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr obstacles);
+    
+  void addUnmatchedDetections();
+
   std::vector<size_t> findUnmatchedIndices(
     size_t number_of_elements,
     const std::vector<std::pair<size_t, size_t>>& matched_indicies,

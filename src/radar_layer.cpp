@@ -334,29 +334,36 @@ void RadarLayer::findUuid(
         }
       }
 
-      std::vector<size_t> unmatched_detections = findUnmatchedIndices(number_of_detections, matched_indices, true);
-      std::vector<size_t> unmatched_obstacles = findUnmatchedIndices(number_of_obstacles, matched_indices, false);
+      clearUnmatchedObstacles(number_of_obstacles, matched_indices, obstacles); 
 
-      if(unmatched_obstacles.size()>0){
-        RCLCPP_INFO(logger_, "Unmatched Obstacles Found");
-        std::vector<size_t> sorted_unmatched_obstacles = unmatched_obstacles;
-        std::sort(sorted_unmatched_obstacles.begin(), sorted_unmatched_obstacles.end(), std::greater<size_t>());
-        for (size_t i = 0; i < sorted_unmatched_obstacles.size(); i++) {
-          obstacles->obstacles.erase(obstacles->obstacles.begin() + i);
-        }
-      }
+      std::vector<size_t> unmatched_detections = findUnmatchedIndices(number_of_detections, matched_indices, true);
       
       
       if(unmatched_detections.size()>0){
-        RCLCPP_INFO(logger_, "Unmatched Detections Found");
+        RCLCPP_DEBUG(logger_, "Unmatched Detections Found");
         for (size_t i = 0; i < unmatched_detections.size(); i++) {
           obstacles->obstacles.push_back(detections->obstacles[unmatched_detections[i]]);
         }
       }
-
-      //*obstacles = *detections;
     }
   }
+}
+
+void RadarLayer::clearUnmatchedObstacles(int number_of_obstacles, 
+  std::vector<std::pair<size_t, size_t>> matched_indices, 
+  const nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr obstacles){
+
+  std::vector<size_t> unmatched_obstacles = findUnmatchedIndices(number_of_obstacles, matched_indices, false);
+
+  if(unmatched_obstacles.size()>0){
+    RCLCPP_DEBUG(logger_, "Unmatched Obstacles Found");
+    std::vector<size_t> sorted_unmatched_obstacles = unmatched_obstacles;
+    std::sort(sorted_unmatched_obstacles.begin(), sorted_unmatched_obstacles.end(), std::greater<size_t>());
+    for (size_t i = 0; i < sorted_unmatched_obstacles.size(); i++) {
+      obstacles->obstacles.erase(obstacles->obstacles.begin() + i);
+    }
+  }
+      
 }
 
 std::vector<size_t> RadarLayer::findUnmatchedIndices(
