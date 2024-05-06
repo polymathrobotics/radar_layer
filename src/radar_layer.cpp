@@ -316,6 +316,13 @@ void RadarLayer::findUuid(
   int number_of_detections = detections->obstacles.size();
   std::vector<std::pair<size_t, size_t>> matched_indices;
 
+  rclcpp::Time detection_time(detections->header.stamp.sec, detections->header.stamp.nanosec);
+  rclcpp::Time obstacle_time(obstacles->header.stamp.sec, obstacles->header.stamp.nanosec);
+  rclcpp::Duration duration = detection_time - obstacle_time;
+  double dt = duration.seconds() + duration.nanoseconds() / 1e9f;
+
+  RCLCPP_DEBUG(logger_, "dt: %f", dt);
+
   if (number_of_detections > 0) { //If there are detections
     if (number_of_obstacles == 0) { //Empty Obstacle List, likely first detection
       *obstacles = *detections;
@@ -364,7 +371,7 @@ void RadarLayer::addUnmatchedDetections(int number_of_detections,
   const nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr obstacles,
   const nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr detections){
   
-   std::vector<size_t> unmatched_detections = findUnmatchedIndices(number_of_detections, matched_indices, true);
+  std::vector<size_t> unmatched_detections = findUnmatchedIndices(number_of_detections, matched_indices, true);
       
   if(unmatched_detections.size()>0){
     RCLCPP_DEBUG(logger_, "Unmatched Detections Found");
@@ -373,6 +380,30 @@ void RadarLayer::addUnmatchedDetections(int number_of_detections,
     }
   }
 }
+
+// void RadarLayer::updatePositionMean(const nav2_dynamic_msgs::msg::Obstacle & prior,
+//   const nav2_dynamic_msgs::msg::Obstacle & measurement,
+//   const nav2_dynamic_msgs::msg::Obstacle & obstacle){
+
+//   rclcpp::Duration dt = 
+
+//   // Eigen::MatrixXd prediction_position_covariance(2, 2);
+//   // Eigen::MatrixXd prediction_velocity_covariance(2, 2);
+//   // Eigen::MatrixXd measurement_position_covariance(2, 2);
+
+//   // prediction_position_covariance(0, 0) = prediction.position_covariance.x;
+//   // prediction_position_covariance(1, 1) = prediction.position_covariance.y;
+//   // prediction_velocity_covariance(0, 0) = prediction.velocity_covariance.x;
+//   // prediction_velocity_covariance(1, 1) = prediction.velocity_covariance.y;
+
+// void RadarLayer::updatePositionCovariance(){
+// }
+
+// void RadarLayer::updateVelocityMean(){
+// }
+
+// void RadarLayer::updateVelocityCovariance(){
+// }
 
 std::vector<size_t> RadarLayer::findUnmatchedIndices(
     size_t number_of_elements,
