@@ -130,6 +130,11 @@ public:
     const nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr obstacles,
     const nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr detections);
 
+  std::vector<size_t> findUnmatchedIndices(
+    size_t number_of_elements,
+    const std::vector<std::pair<size_t, size_t>>& matched_indicies,
+    bool check_first_index);
+
   bool transformPoint(
     const std_msgs::msg::Header obstacle_frame,
     const nav2_dynamic_msgs::msg::Obstacle & obstacle_track,

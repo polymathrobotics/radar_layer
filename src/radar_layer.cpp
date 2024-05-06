@@ -333,9 +333,35 @@ void RadarLayer::findUuid(
           }
         }
       }
+
+      std::vector<size_t> unmatched_detections = findUnmatchedIndices(number_of_detections, matched_indices, true);
+      if(unmatched_detections.size()>0){
+        RCLCPP_DEBUG(logger_, "Unmatched Detections Found");
+      }
+
       *obstacles = *detections;
     }
   }
+}
+
+std::vector<size_t> RadarLayer::findUnmatchedIndices(
+    size_t number_of_elements,
+    const std::vector<std::pair<size_t, size_t>>& matched_indices,
+    bool check_first_index) {
+
+    std::set<size_t> matched_set;
+    for (const auto& pair : matched_indices) {
+        matched_set.insert(check_first_index ? pair.first : pair.second);
+    }
+
+    std::vector<size_t> unmatched_indices;
+    for (size_t index = 0; index < number_of_elements; ++index) {
+        if (matched_set.find(index) == matched_set.end()) {
+            unmatched_indices.push_back(index);
+        }
+    }
+
+    return unmatched_indices;
 }
 
 bool RadarLayer::transformPoint(
