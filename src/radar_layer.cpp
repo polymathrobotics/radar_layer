@@ -335,8 +335,14 @@ void RadarLayer::findUuid(
       }
 
       std::vector<size_t> unmatched_detections = findUnmatchedIndices(number_of_detections, matched_indices, true);
+      std::vector<size_t> unmatched_obstacles = findUnmatchedIndices(number_of_obstacles, matched_indices, false);
+
       if(unmatched_detections.size()>0){
         RCLCPP_INFO(logger_, "Unmatched Detections Found");
+      }
+
+      if(unmatched_obstacles.size()>0){
+        RCLCPP_INFO(logger_, "Unmatched Obstacles Found");
       }
 
       *obstacles = *detections;
