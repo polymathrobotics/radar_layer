@@ -338,7 +338,7 @@ void RadarLayer::findUuid(
             RCLCPP_DEBUG(logger_, "Matching UUIDs Found");
             updateGaussian(obstacles->obstacles[j], detections->obstacles[i], dt);
 
-            obstacles->obstacles[j] = detections->obstacles[i];
+            //obstacles->obstacles[j] = detections->obstacles[i];
 
             matched_indices.push_back({i, j});
             break;
