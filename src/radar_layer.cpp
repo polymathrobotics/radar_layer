@@ -321,8 +321,6 @@ void RadarLayer::findUuid(
   rclcpp::Duration duration = detection_time - obstacle_time;
   double dt = duration.seconds() + duration.nanoseconds() / 1e9f;
 
-  RCLCPP_INFO(logger_, "dt: %f", dt);
-
   if (number_of_detections > 0) { //If there are detections
     if (number_of_obstacles == 0) { //Empty Obstacle List, likely first detection
       *obstacles = *detections;
@@ -418,14 +416,14 @@ void RadarLayer::updateGaussian(nav2_dynamic_msgs::msg::Obstacle & obstacle,
   Eigen::MatrixXd new_velocity_covariance = (obstacle_velocity_covariance.inverse() + detection_velocity_covariance.inverse()).inverse();
   Eigen::VectorXd new_velocity_mean = new_velocity_covariance * (obstacle_velocity_covariance.inverse() * obstacle_velocity_mean + detection_velocity_covariance.inverse() * detection_velocity_mean);
 
-  obstacle.position.x = obstacle_position_mean(0); 
-  obstacle.position.y = obstacle_position_mean(1);
-  obstacle.velocity.x = obstacle_velocity_mean(0);
-  obstacle.velocity.y = obstacle_velocity_mean(1);
-  obstacle.position_covariance.x = obstacle_position_covariance(0, 0);
-  obstacle.position_covariance.y = obstacle_position_covariance(1, 1);
-  obstacle.velocity_covariance.x = obstacle_velocity_covariance(0, 0);
-  obstacle.velocity_covariance.y = obstacle_velocity_covariance(1, 1);
+  obstacle.position.x = new_position_mean(0); 
+  obstacle.position.y = new_position_mean(1);
+  obstacle.velocity.x = new_velocity_mean(0);
+  obstacle.velocity.y = new_velocity_mean(1);
+  obstacle.position_covariance.x = new_position_covariance(0, 0);
+  obstacle.position_covariance.y = new_position_covariance(1, 1);
+  obstacle.velocity_covariance.x = new_velocity_covariance(0, 0);
+  obstacle.velocity_covariance.y = new_velocity_covariance(1, 1);
 
   }
 
