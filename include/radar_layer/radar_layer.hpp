@@ -146,7 +146,14 @@ public:
 
   void updateGaussian(nav2_dynamic_msgs::msg::Obstacle & obstacle,
     const nav2_dynamic_msgs::msg::Obstacle & detection,
-    double dt); 
+    double dt);
+
+  double getProbabilty(const Eigen::MatrixXd & mean,
+    const Eigen::MatrixXd & inv_covariance,
+    double & sqrt_2_pi_det_covariance,
+    double x, double y);
+
+  void getObstacleProbabilty( nav2_dynamic_msgs::msg::Obstacle & obstacle);
 
   bool transformPoint(
     const std_msgs::msg::Header obstacle_frame,

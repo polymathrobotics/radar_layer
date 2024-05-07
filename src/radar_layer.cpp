@@ -191,35 +191,38 @@ void RadarLayer::updateBounds(
       obstacle_array->obstacles.size();
 
     for (size_t i = 0; i < number_of_objects; i++) {
-      double length = obstacle_array->obstacles[i].size.x;
-      double width = obstacle_array->obstacles[i].size.y;
+      getObstacleProbabilty(obstacle_array->obstacles[i]);
 
-      int length_in_grid = int(length / resolution_);
-      int width_in_grid = int(width / resolution_);
+      // double length = obstacle_array->obstacles[i].size.x;
+      // double width = obstacle_array->obstacles[i].size.y;
+
+      // int length_in_grid = int(length / resolution_);
+      // int width_in_grid = int(width / resolution_);
 
 
-      for (int x_i = 0; x_i < length_in_grid; x_i++) {
-        for (int y_i = 0; y_i < width_in_grid; y_i++) {
-          transformPoint(
-            obstacle_array->header,
-            obstacle_array->obstacles[i],
-            point_in_global_frame,
-            -length / 2 + x_i * resolution_,
-            -width / 2 + y_i * resolution_);
+      // for (int x_i = 0; x_i < length_in_grid; x_i++) {
+      //   for (int y_i = 0; y_i < width_in_grid; y_i++) {
+      //     transformPoint(
+      //       obstacle_array->header,
+      //       obstacle_array->obstacles[i],
+      //       point_in_global_frame,
+      //       -length / 2 + x_i * resolution_,
+      //       -width / 2 + y_i * resolution_);
 
-          double px = point_in_global_frame.point.x;
-          double py = point_in_global_frame.point.y;
+      //     double px = point_in_global_frame.point.x;
+      //     double py = point_in_global_frame.point.y;
 
-          // now we need to compute the map coordinates for the observation
-          unsigned int mx, my;
+      //     // now we need to compute the map coordinates for the observation
+      //     unsigned int mx, my;
 
-          if (!worldToMap(px, py, mx, my)) {
-            continue;
-          }
-          unsigned int index = getIndex(mx, my);
-          costmap_[index] = LETHAL_OBSTACLE;
-        }
-      }
+      //     if (!worldToMap(px, py, mx, my)) {
+      //       continue;
+      //     }
+      //     unsigned int index = getIndex(mx, my);
+      //     costmap_[index] = LETHAL_OBSTACLE;
+      //   }
+      // }
+
     }
   }
 }
@@ -335,9 +338,6 @@ void RadarLayer::findUuid(
           {
             RCLCPP_DEBUG(logger_, "Matching UUIDs Found");
             updateGaussian(obstacles->obstacles[j], detections->obstacles[i], dt);
-
-            //obstacles->obstacles[j] = detections->obstacles[i];
-
             matched_indices.push_back({i, j});
             break;
           }
@@ -425,7 +425,47 @@ void RadarLayer::updateGaussian(nav2_dynamic_msgs::msg::Obstacle & obstacle,
   obstacle.velocity_covariance.x = new_velocity_covariance(0, 0);
   obstacle.velocity_covariance.y = new_velocity_covariance(1, 1);
 
-  }
+}
+
+void RadarLayer::getObstacleProbabilty(nav2_dynamic_msgs::msg::Obstacle & obstacle){
+
+    Eigen::Vector2d mean(obstacle.position.x, obstacle.position.y);
+    Eigen::MatrixXd covariance(2, 2);
+    covariance(0, 0) = obstacle.position_covariance.x;
+    covariance(1, 1) = obstacle.position_covariance.y;
+    Eigen::MatrixXd inv_covariance = covariance.inverse();
+    double sqrt_2_pi_det_covariance = sqrt(2 * M_PI * covariance.determinant());
+    
+    double x, y;
+    double probability;
+
+    for (unsigned int my = 0; my < size_y_; my++) {
+      for (unsigned int mx = 0; mx < size_x_; mx++) {
+        mapToWorld(mx, my, x, y);
+        probability = getProbabilty(mean, inv_covariance, sqrt_2_pi_det_covariance, x, y);
+        unsigned int index = getIndex(x, y);
+        uint8_t current_cost = costmap_[index];
+        costmap_[index] = std::max(current_cost, uint8_t(LETHAL_OBSTACLE * probability * sqrt_2_pi_det_covariance));
+      }
+    }
+
+}
+
+double RadarLayer::getProbabilty( const Eigen::MatrixXd & mean,
+  const Eigen::MatrixXd & inv_covariance,
+  double & sqrt_2_pi_det_covariance,
+  double x, double y){
+
+    Eigen::Vector2d input(x, y);
+    Eigen::Vector2d difference = input-mean;
+
+    double b = difference.transpose()*inv_covariance*difference;
+
+    double probability = pow(1/sqrt_2_pi_det_covariance, -b);
+
+    return b;
+
+}
 
 
 std::vector<size_t> RadarLayer::findUnmatchedIndices(
