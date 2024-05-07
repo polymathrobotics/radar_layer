@@ -202,7 +202,13 @@ void RadarLayer::updateBounds(
       int length_in_grid = int(length / resolution_);
       int width_in_grid = int(width / resolution_);
 
-
+      Eigen::Vector2d mean(obstacle_array->obstacles[i].position.x, obstacle_array->obstacles[i].position.y);
+      Eigen::MatrixXd covariance(2, 2);
+      covariance(0, 0) = obstacle_array->obstacles[i].position_covariance.x;
+      covariance(1, 1) = obstacle_array->obstacles[i].position_covariance.y;
+      Eigen::MatrixXd inv_covariance = covariance.inverse();
+      double sqrt_2_pi_det_covariance = sqrt(2 * M_PI * covariance.determinant());
+    
       for (int x_i = 0; x_i < length_in_grid; x_i++) {
         for (int y_i = 0; y_i < width_in_grid; y_i++) {
           transformPoint(
@@ -214,6 +220,7 @@ void RadarLayer::updateBounds(
 
           double px = point_in_global_frame.point.x;
           double py = point_in_global_frame.point.y;
+          double probability = getProbabilty(mean, inv_covariance, sqrt_2_pi_det_covariance, px, py);
 
           // now we need to compute the map coordinates for the observation
           unsigned int mx, my;
@@ -221,8 +228,13 @@ void RadarLayer::updateBounds(
           if (!worldToMap(px, py, mx, my)) {
             continue;
           }
+
           unsigned int index = getIndex(mx, my);
-          costmap_[index] = LETHAL_OBSTACLE;
+
+          uint8_t current_cost = costmap_[index];
+          costmap_[index] = std::max(current_cost, uint8_t(LETHAL_OBSTACLE * probability * sqrt_2_pi_det_covariance));
+          
+          //costmap_[index] = LETHAL_OBSTACLE;
         }
       }
 
