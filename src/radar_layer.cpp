@@ -445,6 +445,7 @@ void RadarLayer::getObstacleProbabilty(nav2_dynamic_msgs::msg::Obstacle & obstac
         probability = getProbabilty(mean, inv_covariance, sqrt_2_pi_det_covariance, x, y);
         unsigned int index = getIndex(x, y);
         uint8_t current_cost = costmap_[index];
+        RCLCPP_DEBUG(logger_, "cost: %i", current_cost);
         costmap_[index] = std::max(current_cost, uint8_t(LETHAL_OBSTACLE * probability * sqrt_2_pi_det_covariance));
       }
     }
