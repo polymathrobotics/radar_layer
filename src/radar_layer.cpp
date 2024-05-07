@@ -480,7 +480,7 @@ double RadarLayer::getProbabilty( const Eigen::MatrixXd & mean,
 
     double b = difference.transpose()*inv_covariance*difference;
 
-    double probability = pow(1/sqrt_2_pi_det_covariance, -b);
+    double probability = 1/sqrt_2_pi_det_covariance*exp(-b);
 
     return b;
 
