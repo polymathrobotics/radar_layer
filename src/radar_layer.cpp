@@ -194,37 +194,37 @@ void RadarLayer::updateBounds(
     RCLCPP_INFO(logger_, "size_y_: %i", size_y_);
 
     for (size_t i = 0; i < number_of_objects; i++) {
-      getObstacleProbabilty(obstacle_array->obstacles[i]);
+      // getObstacleProbabilty(obstacle_array->obstacles[i]);
 
-      // double length = obstacle_array->obstacles[i].size.x;
-      // double width = obstacle_array->obstacles[i].size.y;
+      double length = obstacle_array->obstacles[i].size.x;
+      double width = obstacle_array->obstacles[i].size.y;
 
-      // int length_in_grid = int(length / resolution_);
-      // int width_in_grid = int(width / resolution_);
+      int length_in_grid = int(length / resolution_);
+      int width_in_grid = int(width / resolution_);
 
 
-      // for (int x_i = 0; x_i < length_in_grid; x_i++) {
-      //   for (int y_i = 0; y_i < width_in_grid; y_i++) {
-      //     transformPoint(
-      //       obstacle_array->header,
-      //       obstacle_array->obstacles[i],
-      //       point_in_global_frame,
-      //       -length / 2 + x_i * resolution_,
-      //       -width / 2 + y_i * resolution_);
+      for (int x_i = 0; x_i < length_in_grid; x_i++) {
+        for (int y_i = 0; y_i < width_in_grid; y_i++) {
+          transformPoint(
+            obstacle_array->header,
+            obstacle_array->obstacles[i],
+            point_in_global_frame,
+            -length / 2 + x_i * resolution_,
+            -width / 2 + y_i * resolution_);
 
-      //     double px = point_in_global_frame.point.x;
-      //     double py = point_in_global_frame.point.y;
+          double px = point_in_global_frame.point.x;
+          double py = point_in_global_frame.point.y;
 
-      //     // now we need to compute the map coordinates for the observation
-      //     unsigned int mx, my;
+          // now we need to compute the map coordinates for the observation
+          unsigned int mx, my;
 
-      //     if (!worldToMap(px, py, mx, my)) {
-      //       continue;
-      //     }
-      //     unsigned int index = getIndex(mx, my);
-      //     costmap_[index] = LETHAL_OBSTACLE;
-      //   }
-      // }
+          if (!worldToMap(px, py, mx, my)) {
+            continue;
+          }
+          unsigned int index = getIndex(mx, my);
+          costmap_[index] = LETHAL_OBSTACLE;
+        }
+      }
 
     }
   }
