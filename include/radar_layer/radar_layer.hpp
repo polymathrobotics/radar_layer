@@ -144,6 +144,10 @@ public:
     const std::vector<std::pair<size_t, size_t>>& matched_indicies,
     bool check_first_index);
 
+  void updateGaussian(nav2_dynamic_msgs::msg::Obstacle & obstacle,
+    const nav2_dynamic_msgs::msg::Obstacle & detection,
+    double dt); 
+
   bool transformPoint(
     const std_msgs::msg::Header obstacle_frame,
     const nav2_dynamic_msgs::msg::Obstacle & obstacle_track,

@@ -336,7 +336,7 @@ void RadarLayer::findUuid(
               obstacles->obstacles[j].uuid.uuid.data(), 16) == 0)
           {
             RCLCPP_DEBUG(logger_, "Matching UUIDs Found");
-            obstacles->obstacles[j] = detections->obstacles[i];
+            updateGaussian(obstacles->obstacles[j], detections->obstacles[i], dt);
             matched_indices.push_back({i, j});
             break;
           }
@@ -382,29 +382,50 @@ void RadarLayer::addUnmatchedDetections(int number_of_detections,
   }
 }
 
-// void RadarLayer::updatePositionMean(const nav2_dynamic_msgs::msg::Obstacle & prior,
-//   const nav2_dynamic_msgs::msg::Obstacle & measurement,
-//   const nav2_dynamic_msgs::msg::Obstacle & obstacle){
+void RadarLayer::updateGaussian(nav2_dynamic_msgs::msg::Obstacle & obstacle,
+  const nav2_dynamic_msgs::msg::Obstacle & detection,
+  double dt){ 
 
-//   rclcpp::Duration dt = 
+  Eigen::Vector2d obstacle_position_mean(obstacle.position.x, obstacle.position.y);
+  Eigen::Vector2d obstacle_velocity_mean(obstacle.velocity.x, obstacle.velocity.y);
 
-//   // Eigen::MatrixXd prediction_position_covariance(2, 2);
-//   // Eigen::MatrixXd prediction_velocity_covariance(2, 2);
-//   // Eigen::MatrixXd measurement_position_covariance(2, 2);
+  Eigen::Vector2d detection_position_mean(detection.position.x, detection.position.y);
+  Eigen::Vector2d detection_velocity_mean(detection.velocity.x, detection.velocity.y);
 
-//   // prediction_position_covariance(0, 0) = prediction.position_covariance.x;
-//   // prediction_position_covariance(1, 1) = prediction.position_covariance.y;
-//   // prediction_velocity_covariance(0, 0) = prediction.velocity_covariance.x;
-//   // prediction_velocity_covariance(1, 1) = prediction.velocity_covariance.y;
+  Eigen::MatrixXd obstacle_position_covariance(2, 2);
+  obstacle_position_covariance(0, 0) = obstacle.position_covariance.x;
+  obstacle_position_covariance(1, 1) = obstacle.position_covariance.y;
 
-// void RadarLayer::updatePositionCovariance(){
-// }
+  Eigen::MatrixXd obstacle_velocity_covariance(2, 2);
+  obstacle_velocity_covariance(0, 0) = obstacle.velocity_covariance.x;
+  obstacle_velocity_covariance(1, 1) = obstacle.velocity_covariance.y;
 
-// void RadarLayer::updateVelocityMean(){
-// }
+  Eigen::MatrixXd detection_position_covariance(2, 2);
+  detection_position_covariance(0, 0) = detection.position_covariance.x;
+  detection_position_covariance(1, 1) = detection.position_covariance.y;
 
-// void RadarLayer::updateVelocityCovariance(){
-// }
+  Eigen::MatrixXd detection_velocity_covariance(2, 2);
+  detection_velocity_covariance(0, 0) = detection.velocity_covariance.x;
+  detection_velocity_covariance(1, 1) = detection.velocity_covariance.y;
+
+  Eigen::MatrixXd R = (obstacle_position_covariance + dt*dt*obstacle_velocity_covariance).inverse();
+  Eigen::MatrixXd new_position_covariance = (R + detection_position_covariance.inverse()).inverse();
+  Eigen::VectorXd new_position_mean = new_position_covariance * (R * (obstacle_position_mean + dt*obstacle_velocity_mean) + detection_position_covariance.inverse() * detection_position_mean);
+
+  Eigen::MatrixXd new_velocity_covariance = (obstacle_velocity_covariance.inverse() + detection_velocity_covariance.inverse()).inverse();
+  Eigen::VectorXd new_velocity_mean = new_velocity_covariance * (obstacle_velocity_covariance.inverse() * obstacle_velocity_mean + detection_velocity_covariance.inverse() * detection_velocity_mean);
+
+  obstacle.position.x = obstacle_position_mean(0); 
+  obstacle.position.y = obstacle_position_mean(1);
+  obstacle.velocity.x = obstacle_velocity_mean(0);
+  obstacle.velocity.y = obstacle_velocity_mean(1);
+  obstacle.position_covariance.x = obstacle_position_covariance(0, 0);
+  obstacle.position_covariance.y = obstacle_position_covariance(1, 1);
+  obstacle.velocity_covariance.x = obstacle_velocity_covariance(0, 0);
+  obstacle.velocity_covariance.y = obstacle_velocity_covariance(1, 1);
+
+  }
+
 
 std::vector<size_t> RadarLayer::findUnmatchedIndices(
     size_t number_of_elements,
