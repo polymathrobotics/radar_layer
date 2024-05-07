@@ -190,9 +190,6 @@ void RadarLayer::updateBounds(
     int number_of_objects =
       obstacle_array->obstacles.size();
 
-    RCLCPP_INFO(logger_, "size_x_: %i", size_x_);
-    RCLCPP_INFO(logger_, "size_y_: %i", size_y_);
-
     for (size_t i = 0; i < number_of_objects; i++) {
       // getObstacleProbabilty(obstacle_array->obstacles[i]);
 
@@ -473,6 +470,13 @@ double RadarLayer::getProbabilty( const Eigen::MatrixXd & mean,
 
     Eigen::Vector2d input(x, y);
     Eigen::Vector2d difference = input-mean;
+
+    RCLCPP_DEBUG(logger_, "mean.x: %f", mean(0));
+    RCLCPP_DEBUG(logger_, "mean.y: %f", mean(1));
+    RCLCPP_DEBUG(logger_, "input.x: %f", input(0));
+    RCLCPP_DEBUG(logger_, "input.y: %f", input(1));
+    RCLCPP_DEBUG(logger_, "difference.x: %f", difference(0));
+    RCLCPP_DEBUG(logger_, "difference.y: %f", difference(1));
 
     double b = difference.transpose()*inv_covariance*difference;
 
