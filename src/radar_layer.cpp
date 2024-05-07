@@ -218,8 +218,6 @@ void RadarLayer::updateBounds(
           double px = point_in_global_frame.point.x;
           double py = point_in_global_frame.point.y;
           double probability = getProbabilty(mean, inv_covariance, sqrt_2_pi_det_covariance, px, py);
-          RCLCPP_INFO(logger_, "probability: %f" , probability);
-          RCLCPP_INFO(logger_, "sqrt_2_pi_det_covariance: %f" , sqrt_2_pi_det_covariance);
 
           // now we need to compute the map coordinates for the observation
           unsigned int mx, my;
@@ -474,6 +472,9 @@ double RadarLayer::getProbabilty( const Eigen::MatrixXd & mean,
     Eigen::Vector2d difference = input-mean;
 
     double b = difference.transpose()*inv_covariance*difference;
+
+    RCLCPP_INFO(logger_, "b: %f" , b);
+    RCLCPP_INFO(logger_, "sqrt_2_pi_det_covariance: %f" , sqrt_2_pi_det_covariance);
 
     double probability = 1/sqrt_2_pi_det_covariance*exp(-b);
 
