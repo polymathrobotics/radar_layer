@@ -213,7 +213,7 @@ void RadarLayer::updateBounds(
       // double sqrt_2_pi_det_covariance = sqrt(2 * M_PI * covariance.determinant());
     
       int number_of_time_steps = 4;
-      double sample_time = 1.0;
+      double sample_time = 3.0;
 
       for (int k = 0; k < number_of_time_steps; k++) {
 
@@ -571,7 +571,7 @@ Eigen::VectorXd RadarLayer::projectMean(
 
   position(0) = obstacle.position.x;
   position(1) = obstacle.position.y;
-  velocity(0) = obstacle.velocity.x;
+  velocity(0) = 1.0; //sobstacle.velocity.x;
   velocity(1) = obstacle.velocity.y;
 
   position_projected = position + time_steps * sample_time * velocity;
