@@ -220,6 +220,11 @@ void RadarLayer::updateBounds(
         Eigen::VectorXd mean = projectMean(obstacle_array->obstacles[i], sample_time, number_of_time_steps);
         Eigen::MatrixXd covariance = projectCovariance(obstacle_array->obstacles[i], sample_time, number_of_time_steps);
 
+        RCLCPP_INFO(logger_, "mean(0): %f", mean(0))
+        RCLCPP_INFO(logger_, "mean(1): %f", mean(1))
+        RCLCPP_INFO(logger_, "covariance(0, 0): %f", covariance(0, 0))
+        RCLCPP_INFO(logger_, "covariance(1, 1): %f", covariance(1, 1))
+
         Eigen::MatrixXd inv_covariance = Eigen::MatrixXd::Zero(2, 2);
         inv_covariance(0, 0) = 1/covariance(0, 0);
         inv_covariance(1, 1) = 1/covariance(1, 1);
