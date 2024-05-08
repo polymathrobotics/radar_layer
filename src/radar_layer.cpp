@@ -170,6 +170,8 @@ void RadarLayer::updateBounds(
   double * max_y)
 {
   geometry_msgs::msg::PointStamped point_in_global_frame;
+  geometry_msgs::msg::PointStamped point_in_radar_frame;
+  
 
   std::lock_guard<Costmap2D::mutex_t> guard(*getMutex());
   resetMaps();
@@ -212,16 +214,20 @@ void RadarLayer::updateBounds(
     
       for (int x_i = 0; x_i < length_in_grid; x_i++) {
         for (int y_i = 0; y_i < width_in_grid; y_i++) {
+
+          point_in_radar_frame.point.x = -length / 2 + x_i * resolution_;
+          point_in_radar_frame.point.y = -width / 2 + y_i * resolution_;
+          double probability = getProbabilty(mean, inv_covariance, sqrt_2_pi_det_covariance, point_in_radar_frame.point.x, point_in_radar_frame.point.y);
+
           transformPoint(
             obstacle_array->header,
             obstacle_array->obstacles[i],
             point_in_global_frame,
-            -length / 2 + x_i * resolution_,
-            -width / 2 + y_i * resolution_);
+            point_in_radar_frame.point.x,
+            point_in_radar_frame.point.y);
 
           double px = point_in_global_frame.point.x;
           double py = point_in_global_frame.point.y;
-          double probability = getProbabilty(mean, inv_covariance, sqrt_2_pi_det_covariance, px, py);
 
           // now we need to compute the map coordinates for the observation
           unsigned int mx, my;
