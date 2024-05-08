@@ -260,19 +260,19 @@ void RadarLayer::updateBounds(
             // RCLCPP_INFO(logger_, "cost: %f", current_cost);
             costmap_[index] = std::max(current_cost, uint8_t(LETHAL_OBSTACLE * probability * sqrt_2_pi_det_covariance * 2));
 
-            if (!worldToMap(px+resolution_, py+resolution_, mx, my)) {
-              continue;
-            }
-            index = getIndex(mx, my);
-            current_cost = costmap_[index];
-            costmap_[index] = std::max(current_cost, uint8_t(LETHAL_OBSTACLE * probability * sqrt_2_pi_det_covariance * 2));
+            // if (!worldToMap(px+resolution_, py+resolution_, mx, my)) {
+            //   continue;
+            // }
+            // index = getIndex(mx, my);
+            // current_cost = costmap_[index];
+            // costmap_[index] = std::max(current_cost, uint8_t(LETHAL_OBSTACLE * probability * sqrt_2_pi_det_covariance * 2));
 
-            if (!worldToMap(px-resolution_, py-resolution_, mx, my)) {
-              continue;
-            }
-            index = getIndex(mx, my);
-            current_cost = costmap_[index];
-            costmap_[index] = std::max(current_cost, uint8_t(LETHAL_OBSTACLE * probability * sqrt_2_pi_det_covariance * 2));
+            // if (!worldToMap(px-resolution_, py-resolution_, mx, my)) {
+            //   continue;
+            // }
+            // index = getIndex(mx, my);
+            // current_cost = costmap_[index];
+            // costmap_[index] = std::max(current_cost, uint8_t(LETHAL_OBSTACLE * probability * sqrt_2_pi_det_covariance * 2));
             
             //costmap_[index] = LETHAL_OBSTACLE;
           }
