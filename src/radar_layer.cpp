@@ -201,7 +201,7 @@ void RadarLayer::updateBounds(
       int length_in_grid = int(length / resolution_);
       int width_in_grid = int(width / resolution_);
     
-      int number_of_time_steps = 1.0;
+      int number_of_time_steps = 3.0;
       double sample_time = 1.0;
 
       for (int k = 0; k < number_of_time_steps; ++k) {
@@ -553,13 +553,12 @@ Eigen::VectorXd RadarLayer::projectMean(
 
   position(0) = obstacle.position.x;
   position(1) = obstacle.position.y;
-  velocity(0) = obstacle.velocity.x;
+  velocity(0) = 1.0; //obstacle.velocity.x;
   velocity(1) = obstacle.velocity.y;
 
   position_projected = position + time_steps * sample_time * velocity;
 
   return position_projected;
-  //return position;
 }
 
 Eigen::MatrixXd RadarLayer::projectCovariance(
@@ -581,7 +580,6 @@ Eigen::MatrixXd RadarLayer::projectCovariance(
     pow(time_steps * sample_time, 2) * velocity_covariance;
 
   return position_covariance_projected;
-  //return position_covariance;
 }
 
 } // namespace radar_layer
