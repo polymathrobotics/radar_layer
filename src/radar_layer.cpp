@@ -201,7 +201,7 @@ void RadarLayer::updateBounds(
       int length_in_grid = int(length / resolution_);
       int width_in_grid = int(width / resolution_);
     
-      int number_of_time_steps = 5.0;
+      int number_of_time_steps = 2.0;
       double sample_time = 1.0;
 
       for (int k = 0; k < number_of_time_steps; ++k) {
