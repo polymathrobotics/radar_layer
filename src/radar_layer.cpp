@@ -214,12 +214,20 @@ void RadarLayer::updateBounds(
 
         double sqrt_2_pi_det_covariance = sqrt(2 * M_PI * covariance(0, 0) * covariance(1, 1));
 
+        Eigen::MatrixXd xs(length_in_grid, width_in_grid);
+        Eigen::MatrixXd ys(length_in_grid, width_in_grid);
+
+        for (int x_i = 0; x_i < length_in_grid; x_i++) {
+            for (int y_i = 0; y_i < width_in_grid; y_i++) {
+                xs(x_i, y_i) = mean(0) - length / 2 + x_i * resolution_;
+                ys(x_i, y_i) = mean(1) - width / 2 + y_i * resolution_;
+          }
+        }
+
+        Eigen::MatrixXd probabilities = getProbabilityBatch(mean, inv_covariance, sqrt_2_pi_det_covariance, xs, ys);
+
         for (int x_i = 0; x_i < length_in_grid; x_i++) {
           for (int y_i = 0; y_i < width_in_grid; y_i++) {
-
-            point_in_radar_frame.point.x = mean(0) - length / 2 + x_i * resolution_;
-            point_in_radar_frame.point.y = mean(1) - width / 2 + y_i * resolution_;
-            double probability = getProbabilty(mean, inv_covariance, sqrt_2_pi_det_covariance, point_in_radar_frame.point.x, point_in_radar_frame.point.y);
 
             transformPoint(
               obstacle_array->header,
@@ -240,11 +248,42 @@ void RadarLayer::updateBounds(
 
             unsigned int index = getIndex(mx, my);
             uint8_t current_cost = costmap_[index];
-            // RCLCPP_INFO(logger_, "cost: %f", current_cost);
-            costmap_[index] = std::max(current_cost, uint8_t(LETHAL_OBSTACLE * probability * sqrt_2_pi_det_covariance));
+            costmap_[index] = std::max(current_cost, uint8_t(LETHAL_OBSTACLE * probabilities(x_i, y_i) * sqrt_2_pi_det_covariance));
 
           }
         }
+
+        // for (int x_i = 0; x_i < length_in_grid; x_i++) {
+        //   for (int y_i = 0; y_i < width_in_grid; y_i++) {
+
+        //     point_in_radar_frame.point.x = mean(0) - length / 2 + x_i * resolution_;
+        //     point_in_radar_frame.point.y = mean(1) - width / 2 + y_i * resolution_;
+        //     double probability = getProbabilty(mean, inv_covariance, sqrt_2_pi_det_covariance, point_in_radar_frame.point.x, point_in_radar_frame.point.y);
+
+        //     transformPoint(
+        //       obstacle_array->header,
+        //       obstacle_array->obstacles[i],
+        //       point_in_global_frame,
+        //       -length / 2 + x_i * resolution_,
+        //       -width / 2 + y_i * resolution_);
+
+        //     double px = point_in_global_frame.point.x;
+        //     double py = point_in_global_frame.point.y;
+
+        //     // now we need to compute the map coordinates for the observation
+        //     unsigned int mx, my;
+
+        //     if (!worldToMap(px, py, mx, my)) {
+        //       continue;
+        //     }
+
+        //     unsigned int index = getIndex(mx, my);
+        //     uint8_t current_cost = costmap_[index];
+        //     // RCLCPP_INFO(logger_, "cost: %f", current_cost);
+        //     costmap_[index] = std::max(current_cost, uint8_t(LETHAL_OBSTACLE * probability * sqrt_2_pi_det_covariance));
+
+        //   }
+        // }
       }
 
     }
@@ -472,8 +511,40 @@ void RadarLayer::getObstacleProbabilty(nav2_dynamic_msgs::msg::Obstacle & obstac
         costmap_[index] = std::max(current_cost, uint8_t(LETHAL_OBSTACLE * probability * sqrt_2_pi_det_covariance));
       }
     }
-
 }
+
+
+Eigen::MatrixXd RadarLayer::getProbabilityBatch(
+    const Eigen::VectorXd& mean, 
+    const Eigen::MatrixXd& inv_covariance,
+    double sqrt_2_pi_det_covariance,
+    const Eigen::MatrixXd& xs,
+    const Eigen::MatrixXd& ys) {
+
+    // Flatten the matrices into vectors for easier handling in batch operations
+    Eigen::VectorXd flat_xs = Eigen::Map<const Eigen::VectorXd>(xs.data(), xs.size());
+    Eigen::VectorXd flat_ys = Eigen::Map<const Eigen::VectorXd>(ys.data(), ys.size());
+
+    // Stack these vectors into a single 2-row matrix (inputs)
+    Eigen::MatrixXd inputs(2, flat_xs.size());
+    inputs.row(0) = flat_xs;
+    inputs.row(1) = flat_ys;
+
+    // Subtract the mean from each column (broadcasting)
+    Eigen::MatrixXd differences = inputs.colwise() - mean;
+
+    // Calculate the Mahalanobis distance for each point
+    Eigen::MatrixXd mahalanobis = (inv_covariance * differences).cwiseProduct(differences).colwise().sum();
+
+    // Compute probabilities using the Gaussian formula
+    Eigen::MatrixXd probabilities = (1 / sqrt_2_pi_det_covariance) * (-0.5 * mahalanobis.array()).exp();
+
+    // Reshape probabilities back into the original grid shape
+    Eigen::MatrixXd grid_probabilities = Eigen::Map<Eigen::MatrixXd>(probabilities.data(), xs.rows(), xs.cols());
+
+    return grid_probabilities;
+}
+
 
 double RadarLayer::getProbabilty( const Eigen::MatrixXd & mean,
   const Eigen::MatrixXd & inv_covariance,

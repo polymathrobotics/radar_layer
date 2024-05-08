@@ -153,6 +153,12 @@ public:
     double & sqrt_2_pi_det_covariance,
     double x, double y);
 
+  Eigen::MatrixXd getProbabilityBatch(const Eigen::VectorXd& mean, 
+    const Eigen::MatrixXd& inv_covariance,
+    double sqrt_2_pi_det_covariance,
+    const Eigen::MatrixXd& xs,
+    const Eigen::MatrixXd& ys);
+
   void getObstacleProbabilty( nav2_dynamic_msgs::msg::Obstacle & obstacle);
 
   bool transformPoint(
