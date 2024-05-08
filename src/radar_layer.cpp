@@ -212,10 +212,10 @@ void RadarLayer::updateBounds(
 
       // double sqrt_2_pi_det_covariance = sqrt(2 * M_PI * covariance.determinant());
     
-      int number_of_time_steps = 0;
+      int number_of_time_steps = 1.0;
       double sample_time = 5.0;
 
-      for (int k = 0; k < number_of_time_steps; k++) {
+      for (int k = 0; k < number_of_time_steps; ++k) {
 
         Eigen::VectorXd mean = projectMean(obstacle_array->obstacles[i], sample_time, k);
         Eigen::MatrixXd covariance = projectCovariance(obstacle_array->obstacles[i], sample_time, k);
