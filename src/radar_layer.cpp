@@ -231,7 +231,7 @@ void RadarLayer::updateBounds(
 
             point_in_radar_frame.point.x = mean(0) - length / 2 + x_i * resolution_;
             point_in_radar_frame.point.y = mean(1) - width / 2 + y_i * resolution_;
-            double probability = getProbabilty(mean, covariance, sqrt_2_pi_det_covariance, point_in_radar_frame.point.x, point_in_radar_frame.point.y);
+            double probability = getProbabilty(mean, inv_covariance, sqrt_2_pi_det_covariance, point_in_radar_frame.point.x, point_in_radar_frame.point.y);
 
             transformPoint(
               obstacle_array->header,
