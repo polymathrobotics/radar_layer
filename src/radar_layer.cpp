@@ -212,7 +212,7 @@ void RadarLayer::updateBounds(
 
       // double sqrt_2_pi_det_covariance = sqrt(2 * M_PI * covariance.determinant());
     
-      int number_of_time_steps = 1;
+      int number_of_time_steps = 0;
       double sample_time = 5.0;
 
       for (int k = 0; k < number_of_time_steps; k++) {
