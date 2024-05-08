@@ -195,8 +195,8 @@ void RadarLayer::updateBounds(
     for (size_t i = 0; i < number_of_objects; i++) {
       // getObstacleProbabilty(obstacle_array->obstacles[i]);
 
-      double length = obstacle_array->obstacles[i].size.x; //*5;
-      double width = obstacle_array->obstacles[i].size.y; //*5;
+      double length = obstacle_array->obstacles[i].size.x*5;
+      double width = obstacle_array->obstacles[i].size.y*5;
 
       int length_in_grid = int(length / resolution_);
       int width_in_grid = int(width / resolution_);
@@ -234,9 +234,9 @@ void RadarLayer::updateBounds(
         for (int x_i = 0; x_i < length_in_grid; x_i++) {
           for (int y_i = 0; y_i < width_in_grid; y_i++) {
 
-            // point_in_radar_frame.point.x = mean(0) - length / 2 + x_i * resolution_;
-            // point_in_radar_frame.point.y = mean(1) - width / 2 + y_i * resolution_;
-            // double probability = getProbabilty(mean, inv_covariance, sqrt_2_pi_det_covariance, point_in_radar_frame.point.x, point_in_radar_frame.point.y);
+            point_in_radar_frame.point.x = mean(0) - length / 2 + x_i * resolution_;
+            point_in_radar_frame.point.y = mean(1) - width / 2 + y_i * resolution_;
+            double probability = getProbabilty(mean, inv_covariance, sqrt_2_pi_det_covariance, point_in_radar_frame.point.x, point_in_radar_frame.point.y);
 
             transformPoint(
               obstacle_array->header,
@@ -256,11 +256,25 @@ void RadarLayer::updateBounds(
             }
 
             unsigned int index = getIndex(mx, my);
-            // uint8_t current_cost = costmap_[index];
+            uint8_t current_cost = costmap_[index];
             // RCLCPP_INFO(logger_, "cost: %f", current_cost);
-            //costmap_[index] = std::max(current_cost, uint8_t(LETHAL_OBSTACLE * probability * sqrt_2_pi_det_covariance * 2));
+            costmap_[index] = std::max(current_cost, uint8_t(LETHAL_OBSTACLE * probability * sqrt_2_pi_det_covariance * 2));
+
+            if (!worldToMap(px+resolution_, py+resolution_, mx, my)) {
+              continue;
+            }
+            index = getIndex(mx, my);
+            current_cost = costmap_[index];
+            costmap_[index] = std::max(current_cost, uint8_t(LETHAL_OBSTACLE * probability * sqrt_2_pi_det_covariance * 2));
+
+            if (!worldToMap(px-resolution_, py-resolution_, mx, my)) {
+              continue;
+            }
+            index = getIndex(mx, my);
+            current_cost = costmap_[index];
+            costmap_[index] = std::max(current_cost, uint8_t(LETHAL_OBSTACLE * probability * sqrt_2_pi_det_covariance * 2));
             
-            costmap_[index] = LETHAL_OBSTACLE;
+            //costmap_[index] = LETHAL_OBSTACLE;
           }
         }
       }
