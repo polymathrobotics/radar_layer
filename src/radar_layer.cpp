@@ -201,24 +201,18 @@ void RadarLayer::updateBounds(
       int length_in_grid = int(length / resolution_);
       int width_in_grid = int(width / resolution_);
     
-      int number_of_time_steps = 2.0;
+      int number_of_time_steps = 1.0;
       double sample_time = 1.0;
 
       for (int k = 0; k < number_of_time_steps; ++k) {
 
         Eigen::VectorXd mean = projectMean(obstacle_array->obstacles[i], sample_time, k);
         Eigen::MatrixXd covariance = projectCovariance(obstacle_array->obstacles[i], sample_time, k);
-
-        RCLCPP_INFO(logger_, "mean(0): %f", mean(0));
-        RCLCPP_INFO(logger_, "mean(1): %f", mean(1));
-        RCLCPP_INFO(logger_, "covariance(0, 0): %f", covariance(0, 0));
-        RCLCPP_INFO(logger_, "covariance(1, 1): %f", covariance(1, 1));
-
         Eigen::MatrixXd inv_covariance = Eigen::MatrixXd::Zero(2, 2);
         inv_covariance(0, 0) = 1/covariance(0, 0);
         inv_covariance(1, 1) = 1/covariance(1, 1);
 
-        double sqrt_2_pi_det_covariance = sqrt(2 * M_PI * covariance.determinant());
+        double sqrt_2_pi_det_covariance = sqrt(2 * M_PI * covariance(0, 0) * covariance(1, 1));
 
         for (int x_i = 0; x_i < length_in_grid; x_i++) {
           for (int y_i = 0; y_i < width_in_grid; y_i++) {
