@@ -195,8 +195,8 @@ void RadarLayer::updateBounds(
     for (size_t i = 0; i < number_of_objects; i++) {
       // getObstacleProbabilty(obstacle_array->obstacles[i]);
 
-      double length = obstacle_array->obstacles[i].size.x;
-      double width = obstacle_array->obstacles[i].size.y;
+      double length = obstacle_array->obstacles[i].size.x*5;
+      double width = obstacle_array->obstacles[i].size.y*5;
 
       int length_in_grid = int(length / resolution_);
       int width_in_grid = int(width / resolution_);
