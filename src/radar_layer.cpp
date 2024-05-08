@@ -223,8 +223,8 @@ void RadarLayer::updateBounds(
             obstacle_array->header,
             obstacle_array->obstacles[i],
             point_in_global_frame,
-            point_in_radar_frame.point.x,
-            point_in_radar_frame.point.y);
+            -length / 2 + x_i * resolution_,
+            -width / 2 + y_i * resolution_);
 
           double px = point_in_global_frame.point.x;
           double py = point_in_global_frame.point.y;
