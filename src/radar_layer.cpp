@@ -559,7 +559,7 @@ Eigen::VectorXd RadarLayer::projectMean(
 
   position(0) = obstacle.position.x;
   position(1) = obstacle.position.y;
-  velocity(0) = 1.0; //sobstacle.velocity.x;
+  velocity(0) = obstacle.velocity.x;
   velocity(1) = obstacle.velocity.y;
 
   position_projected = position + time_steps * sample_time * velocity;
