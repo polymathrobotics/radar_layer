@@ -200,18 +200,14 @@ void RadarLayer::updateBounds(
       int width_in_grid = int(width / resolution_);
 
       Eigen::Vector2d mean(obstacle_array->obstacles[i].position.x, obstacle_array->obstacles[i].position.y);
-      Eigen::MatrixXd covariance(2, 2);
+      Eigen::MatrixXd covariance = Eigen::MatrixXd::Zero(2, 2);
       covariance(0, 0) = obstacle_array->obstacles[i].position_covariance.x;
-      covariance(0, 1) = 0.0;
       covariance(1, 1) = obstacle_array->obstacles[i].position_covariance.y;
-      covariance(1, 0) = 0.0;
-      RCLCPP_INFO(logger_, "obstacle_array->obstacles[i].position_covariance.x %f", obstacle_array->obstacles[i].position_covariance.x);
-      RCLCPP_INFO(logger_, "obstacle_array->obstacles[i].position_covariance.y %f", obstacle_array->obstacles[i].position_covariance.y);
-      Eigen::MatrixXd inv_covariance = covariance.inverse();
+
+      Eigen::MatrixXd inv_covariance = Eigen::MatrixXd::Zero(2, 2);
       inv_covariance(0, 0) = 1/obstacle_array->obstacles[i].position_covariance.x;
       inv_covariance(1, 1) = 1/obstacle_array->obstacles[i].position_covariance.y;
-      inv_covariance(0, 1) = 0.0;
-      inv_covariance(1, 0) = 0.0;
+
       double sqrt_2_pi_det_covariance = sqrt(2 * M_PI * covariance.determinant());
     
       for (int x_i = 0; x_i < length_in_grid; x_i++) {
@@ -413,19 +409,19 @@ void RadarLayer::updateGaussian(nav2_dynamic_msgs::msg::Obstacle & obstacle,
   Eigen::Vector2d detection_position_mean(detection.position.x, detection.position.y);
   Eigen::Vector2d detection_velocity_mean(detection.velocity.x, detection.velocity.y);
 
-  Eigen::MatrixXd obstacle_position_covariance(2, 2);
+  Eigen::MatrixXd obstacle_position_covariance = Eigen::MatrixXd::Zero(2, 2);
   obstacle_position_covariance(0, 0) = obstacle.position_covariance.x;
   obstacle_position_covariance(1, 1) = obstacle.position_covariance.y;
 
-  Eigen::MatrixXd obstacle_velocity_covariance(2, 2);
+  Eigen::MatrixXd obstacle_velocity_covariance = Eigen::MatrixXd::Zero(2, 2);
   obstacle_velocity_covariance(0, 0) = obstacle.velocity_covariance.x;
   obstacle_velocity_covariance(1, 1) = obstacle.velocity_covariance.y;
 
-  Eigen::MatrixXd detection_position_covariance(2, 2);
+  Eigen::MatrixXd detection_position_covariance = Eigen::MatrixXd::Zero(2, 2);
   detection_position_covariance(0, 0) = detection.position_covariance.x;
   detection_position_covariance(1, 1) = detection.position_covariance.y;
 
-  Eigen::MatrixXd detection_velocity_covariance(2, 2);
+  Eigen::MatrixXd detection_velocity_covariance = Eigen::MatrixXd::Zero(2, 2);
   detection_velocity_covariance(0, 0) = detection.velocity_covariance.x;
   detection_velocity_covariance(1, 1) = detection.velocity_covariance.y;
 
@@ -450,7 +446,7 @@ void RadarLayer::updateGaussian(nav2_dynamic_msgs::msg::Obstacle & obstacle,
 void RadarLayer::getObstacleProbabilty(nav2_dynamic_msgs::msg::Obstacle & obstacle){
 
     Eigen::Vector2d mean(obstacle.position.x, obstacle.position.y);
-    Eigen::MatrixXd covariance(2, 2);
+    Eigen::MatrixXd covariance = Eigen::MatrixXd::Zero(2, 2);
     covariance(0, 0) = obstacle.position_covariance.x;
     covariance(1, 1) = obstacle.position_covariance.y;
     Eigen::MatrixXd inv_covariance = covariance.inverse();
@@ -465,6 +461,7 @@ void RadarLayer::getObstacleProbabilty(nav2_dynamic_msgs::msg::Obstacle & obstac
         probability = getProbabilty(mean, inv_covariance, sqrt_2_pi_det_covariance, x, y);
         unsigned int index = getIndex(x, y);
         uint8_t current_cost = costmap_[index];
+        RCLCPP_INFO(logger_, "cost: %i", current_cost);
         costmap_[index] = std::max(current_cost, uint8_t(LETHAL_OBSTACLE * probability * sqrt_2_pi_det_covariance));
       }
     }
@@ -478,16 +475,7 @@ double RadarLayer::getProbabilty( const Eigen::MatrixXd & mean,
 
     Eigen::Vector2d input(x, y);
     Eigen::Vector2d difference = input-mean;
-
-    RCLCPP_INFO(logger_, "inv_covariance: %f" , inv_covariance(0,0));
-    RCLCPP_INFO(logger_, "inv_covariance: %f" , inv_covariance(1,0));
-    RCLCPP_INFO(logger_, "inv_covariance: %f" , inv_covariance(0,1));
-    RCLCPP_INFO(logger_, "inv_covariance: %f" , inv_covariance(1,1));
-
     double b = difference.transpose()*inv_covariance*difference;
-
-    RCLCPP_INFO(logger_, "b: %f" , b);
-    RCLCPP_INFO(logger_, "sqrt_2_pi_det_covariance: %f" , sqrt_2_pi_det_covariance);
 
     double probability = 1/sqrt_2_pi_det_covariance*exp(-b);
 
