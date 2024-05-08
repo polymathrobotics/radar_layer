@@ -479,7 +479,10 @@ double RadarLayer::getProbabilty( const Eigen::MatrixXd & mean,
     Eigen::Vector2d difference = input-mean;
     double b = difference.transpose()*inv_covariance*difference;
 
-    double probability = 1/sqrt_2_pi_det_covariance*exp(-b);
+    RCLCPP_INFO(logger_, "b: %f", b);
+    RCLCPP_INFO(logger_, "(1/sqrt_2_pi_det_covariance): %f", (1/sqrt_2_pi_det_covariance));
+
+    double probability = (1/sqrt_2_pi_det_covariance)*exp(-b);
 
     return probability;
 
