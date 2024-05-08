@@ -475,6 +475,11 @@ double RadarLayer::getProbabilty( const Eigen::MatrixXd & mean,
     Eigen::Vector2d input(x, y);
     Eigen::Vector2d difference = input-mean;
 
+    RCLCPP_INFO(logger_, "inv_covariance: %f" , inv_covariance(0,0));
+    RCLCPP_INFO(logger_, "inv_covariance: %f" , inv_covariance(1,0));
+    RCLCPP_INFO(logger_, "inv_covariance: %f" , inv_covariance(0,1));
+    RCLCPP_INFO(logger_, "inv_covariance: %f" , inv_covariance(1,1));
+
     double b = difference.transpose()*inv_covariance*difference;
 
     RCLCPP_INFO(logger_, "b: %f" , b);
