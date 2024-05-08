@@ -200,17 +200,6 @@ void RadarLayer::updateBounds(
 
       int length_in_grid = int(length / resolution_);
       int width_in_grid = int(width / resolution_);
-
-      // Eigen::Vector2d mean(obstacle_array->obstacles[i].position.x, obstacle_array->obstacles[i].position.y);
-      // Eigen::MatrixXd covariance = Eigen::MatrixXd::Zero(2, 2);
-      // covariance(0, 0) = obstacle_array->obstacles[i].position_covariance.x;
-      // covariance(1, 1) = obstacle_array->obstacles[i].position_covariance.y;
-
-      // Eigen::MatrixXd inv_covariance = Eigen::MatrixXd::Zero(2, 2);
-      // inv_covariance(0, 0) = 1/obstacle_array->obstacles[i].position_covariance.x;
-      // inv_covariance(1, 1) = 1/obstacle_array->obstacles[i].position_covariance.y;
-
-      // double sqrt_2_pi_det_covariance = sqrt(2 * M_PI * covariance.determinant());
     
       int number_of_time_steps = 1.0;
       double sample_time = 5.0;
@@ -258,23 +247,8 @@ void RadarLayer::updateBounds(
             unsigned int index = getIndex(mx, my);
             uint8_t current_cost = costmap_[index];
             // RCLCPP_INFO(logger_, "cost: %f", current_cost);
-            costmap_[index] = std::max(current_cost, uint8_t(LETHAL_OBSTACLE * probability * sqrt_2_pi_det_covariance * 2));
+            costmap_[index] = std::max(current_cost, uint8_t(LETHAL_OBSTACLE * probability * sqrt_2_pi_det_covariance));
 
-            // if (!worldToMap(px+resolution_, py+resolution_, mx, my)) {
-            //   continue;
-            // }
-            // index = getIndex(mx, my);
-            // current_cost = costmap_[index];
-            // costmap_[index] = std::max(current_cost, uint8_t(LETHAL_OBSTACLE * probability * sqrt_2_pi_det_covariance * 2));
-
-            // if (!worldToMap(px-resolution_, py-resolution_, mx, my)) {
-            //   continue;
-            // }
-            // index = getIndex(mx, my);
-            // current_cost = costmap_[index];
-            // costmap_[index] = std::max(current_cost, uint8_t(LETHAL_OBSTACLE * probability * sqrt_2_pi_det_covariance * 2));
-            
-            //costmap_[index] = LETHAL_OBSTACLE;
           }
         }
       }
@@ -516,7 +490,7 @@ double RadarLayer::getProbabilty( const Eigen::MatrixXd & mean,
     Eigen::Vector2d difference = input-mean;
     double b = difference.transpose()*inv_covariance*difference;
 
-    double probability = (1/sqrt_2_pi_det_covariance)*exp(-b);
+    double probability = (1/sqrt_2_pi_det_covariance)*exp(-b/2);
 
     return probability;
 
