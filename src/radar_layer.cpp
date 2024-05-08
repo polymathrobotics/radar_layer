@@ -215,8 +215,8 @@ void RadarLayer::updateBounds(
       for (int x_i = 0; x_i < length_in_grid; x_i++) {
         for (int y_i = 0; y_i < width_in_grid; y_i++) {
 
-          point_in_radar_frame.point.x = obstacle_array->obstacles[i].position.x - length / 2 + x_i * resolution_;
-          point_in_radar_frame.point.y = obstacle_array->obstacles[i].position.y - width / 2 + y_i * resolution_;
+          point_in_radar_frame.point.x = mean(0) - length / 2 + x_i * resolution_;
+          point_in_radar_frame.point.y = mean(1) - width / 2 + y_i * resolution_;
           double probability = getProbabilty(mean, inv_covariance, sqrt_2_pi_det_covariance, point_in_radar_frame.point.x, point_in_radar_frame.point.y);
 
           transformPoint(
