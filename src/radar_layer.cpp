@@ -237,14 +237,17 @@ void RadarLayer::updateBounds(
           }
 
           unsigned int index = getIndex(mx, my);
-
           uint8_t current_cost = costmap_[index];
           // RCLCPP_INFO(logger_, "probability: %f", probability);
           // RCLCPP_INFO(logger_, "sqrt_2_pi_det_covariance: %f", sqrt_2_pi_det_covariance);
           // RCLCPP_INFO(logger_, "cost: %i", current_cost);
-          costmap_[index-1] = std::max(current_cost, uint8_t(LETHAL_OBSTACLE * probability * sqrt_2_pi_det_covariance * 2));
-          costmap_[index+1] = std::max(current_cost, uint8_t(LETHAL_OBSTACLE * probability * sqrt_2_pi_det_covariance * 2));
           costmap_[index] = std::max(current_cost, uint8_t(LETHAL_OBSTACLE * probability * sqrt_2_pi_det_covariance * 2));
+
+
+          unsigned int index_1 = getIndex(mx+resolution_, my+resolution_);
+          unsigned int index_2 = getIndex(mx-resolution_, my-resolution_);
+          costmap_[index_1] = std::max(current_cost, uint8_t(LETHAL_OBSTACLE * probability * sqrt_2_pi_det_covariance * 2));
+          costmap_[index_2] = std::max(current_cost, uint8_t(LETHAL_OBSTACLE * probability * sqrt_2_pi_det_covariance * 2));
           
           //costmap_[index] = LETHAL_OBSTACLE;
         }
