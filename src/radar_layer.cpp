@@ -570,7 +570,8 @@ Eigen::VectorXd RadarLayer::projectMean(
 
   position_projected = position + time_steps * sample_time * velocity;
 
-  return position_projected;
+  // return position_projected;
+  return position;
 }
 
 Eigen::MatrixXd RadarLayer::projectCovariance(
@@ -591,7 +592,8 @@ Eigen::MatrixXd RadarLayer::projectCovariance(
   position_covariance_projected = position_covariance +
     pow(time_steps * sample_time, 2) * velocity_covariance;
 
-  return position_covariance_projected;
+  //return position_covariance_projected;
+  return position_covariance;
 }
 
 } // namespace radar_layer
