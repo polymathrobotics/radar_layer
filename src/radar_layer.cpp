@@ -201,49 +201,61 @@ void RadarLayer::updateBounds(
       int length_in_grid = int(length / resolution_);
       int width_in_grid = int(width / resolution_);
 
-      Eigen::Vector2d mean(obstacle_array->obstacles[i].position.x, obstacle_array->obstacles[i].position.y);
-      Eigen::MatrixXd covariance = Eigen::MatrixXd::Zero(2, 2);
-      covariance(0, 0) = obstacle_array->obstacles[i].position_covariance.x;
-      covariance(1, 1) = obstacle_array->obstacles[i].position_covariance.y;
+      // Eigen::Vector2d mean(obstacle_array->obstacles[i].position.x, obstacle_array->obstacles[i].position.y);
+      // Eigen::MatrixXd covariance = Eigen::MatrixXd::Zero(2, 2);
+      // covariance(0, 0) = obstacle_array->obstacles[i].position_covariance.x;
+      // covariance(1, 1) = obstacle_array->obstacles[i].position_covariance.y;
 
-      Eigen::MatrixXd inv_covariance = Eigen::MatrixXd::Zero(2, 2);
-      inv_covariance(0, 0) = 1/obstacle_array->obstacles[i].position_covariance.x;
-      inv_covariance(1, 1) = 1/obstacle_array->obstacles[i].position_covariance.y;
+      // Eigen::MatrixXd inv_covariance = Eigen::MatrixXd::Zero(2, 2);
+      // inv_covariance(0, 0) = 1/obstacle_array->obstacles[i].position_covariance.x;
+      // inv_covariance(1, 1) = 1/obstacle_array->obstacles[i].position_covariance.y;
 
-      double sqrt_2_pi_det_covariance = sqrt(2 * M_PI * covariance.determinant());
+      // double sqrt_2_pi_det_covariance = sqrt(2 * M_PI * covariance.determinant());
     
-      for (int x_i = 0; x_i < length_in_grid; x_i++) {
-        for (int y_i = 0; y_i < width_in_grid; y_i++) {
+      int number_of_time_steps = 1;
+      double sample_time = 1.0;
 
-          point_in_radar_frame.point.x = mean(0) - length / 2 + x_i * resolution_;
-          point_in_radar_frame.point.y = mean(1) - width / 2 + y_i * resolution_;
-          double probability = getProbabilty(mean, inv_covariance, sqrt_2_pi_det_covariance, point_in_radar_frame.point.x, point_in_radar_frame.point.y);
+      for (int k = 0; k < number_of_time_steps; k++) {
 
-          transformPoint(
-            obstacle_array->header,
-            obstacle_array->obstacles[i],
-            point_in_global_frame,
-            -length / 2 + x_i * resolution_,
-            -width / 2 + y_i * resolution_);
+        Eigen::VectorXd mean = projectMean(obstacle_array->obstacles[i], sample_time, number_of_time_steps);
+        Eigen::MatrixXd covariance = projectCovariance(obstacle_array->obstacles[i], sample_time, number_of_time_steps);
 
-          double px = point_in_global_frame.point.x;
-          double py = point_in_global_frame.point.y;
+        Eigen::MatrixXd inv_covariance = Eigen::MatrixXd::Zero(2, 2);
+        inv_covariance(0, 0) = 1/covariance(0, 0);
+        inv_covariance(1, 1) = 1/covariance(1, 1);
 
-          // now we need to compute the map coordinates for the observation
-          unsigned int mx, my;
+        double sqrt_2_pi_det_covariance = sqrt(2 * M_PI * covariance.determinant());
 
-          if (!worldToMap(px, py, mx, my)) {
-            continue;
+        for (int x_i = 0; x_i < length_in_grid; x_i++) {
+          for (int y_i = 0; y_i < width_in_grid; y_i++) {
+
+            point_in_radar_frame.point.x = mean(0) - length / 2 + x_i * resolution_;
+            point_in_radar_frame.point.y = mean(1) - width / 2 + y_i * resolution_;
+            double probability = getProbabilty(mean, covariance, sqrt_2_pi_det_covariance, point_in_radar_frame.point.x, point_in_radar_frame.point.y);
+
+            transformPoint(
+              obstacle_array->header,
+              obstacle_array->obstacles[i],
+              point_in_global_frame,
+              -length / 2 + x_i * resolution_,
+              -width / 2 + y_i * resolution_);
+
+            double px = point_in_global_frame.point.x;
+            double py = point_in_global_frame.point.y;
+
+            // now we need to compute the map coordinates for the observation
+            unsigned int mx, my;
+
+            if (!worldToMap(px, py, mx, my)) {
+              continue;
+            }
+
+            unsigned int index = getIndex(mx, my);
+            uint8_t current_cost = costmap_[index];
+            costmap_[index] = std::max(current_cost, uint8_t(LETHAL_OBSTACLE * probability * sqrt_2_pi_det_covariance * 2));
+            
+            //costmap_[index] = LETHAL_OBSTACLE;
           }
-
-          unsigned int index = getIndex(mx, my);
-          uint8_t current_cost = costmap_[index];
-          // RCLCPP_INFO(logger_, "probability: %f", probability);
-          // RCLCPP_INFO(logger_, "sqrt_2_pi_det_covariance: %f", sqrt_2_pi_det_covariance);
-          // RCLCPP_INFO(logger_, "cost: %i", current_cost);
-          costmap_[index] = std::max(current_cost, uint8_t(LETHAL_OBSTACLE * probability * sqrt_2_pi_det_covariance * 2));
-          
-          //costmap_[index] = LETHAL_OBSTACLE;
         }
       }
 
@@ -483,11 +495,6 @@ double RadarLayer::getProbabilty( const Eigen::MatrixXd & mean,
     Eigen::Vector2d input(x, y);
     Eigen::Vector2d difference = input-mean;
     double b = difference.transpose()*inv_covariance*difference;
-
-    // RCLCPP_INFO(logger_, "b: %f", b);
-    // RCLCPP_INFO(logger_, "difference(0): %f", difference(0));
-    // RCLCPP_INFO(logger_, "difference(1): %f", difference(1));
-    // RCLCPP_INFO(logger_, "(1/sqrt_2_pi_det_covariance): %f", (1/sqrt_2_pi_det_covariance));
 
     double probability = (1/sqrt_2_pi_det_covariance)*exp(-b);
 
