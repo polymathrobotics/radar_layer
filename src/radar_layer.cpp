@@ -239,8 +239,8 @@ void RadarLayer::updateBounds(
           unsigned int index = getIndex(mx, my);
 
           uint8_t current_cost = costmap_[index];
-          RCLCPP_INFO(logger_, "probability: %f", probability);
-          RCLCPP_INFO(logger_, "sqrt_2_pi_det_covariance: %f", sqrt_2_pi_det_covariance);
+          // RCLCPP_INFO(logger_, "probability: %f", probability);
+          // RCLCPP_INFO(logger_, "sqrt_2_pi_det_covariance: %f", sqrt_2_pi_det_covariance);
           RCLCPP_INFO(logger_, "cost: %i", current_cost);
           costmap_[index] = std::max(current_cost, uint8_t(LETHAL_OBSTACLE * probability * sqrt_2_pi_det_covariance));
           
@@ -485,10 +485,10 @@ double RadarLayer::getProbabilty( const Eigen::MatrixXd & mean,
     Eigen::Vector2d difference = input-mean;
     double b = difference.transpose()*inv_covariance*difference;
 
-    RCLCPP_INFO(logger_, "b: %f", b);
-    RCLCPP_INFO(logger_, "difference(0): %f", difference(0));
-    RCLCPP_INFO(logger_, "difference(1): %f", difference(1));
-    RCLCPP_INFO(logger_, "(1/sqrt_2_pi_det_covariance): %f", (1/sqrt_2_pi_det_covariance));
+    // RCLCPP_INFO(logger_, "b: %f", b);
+    // RCLCPP_INFO(logger_, "difference(0): %f", difference(0));
+    // RCLCPP_INFO(logger_, "difference(1): %f", difference(1));
+    // RCLCPP_INFO(logger_, "(1/sqrt_2_pi_det_covariance): %f", (1/sqrt_2_pi_det_covariance));
 
     double probability = (1/sqrt_2_pi_det_covariance)*exp(-b);
 
