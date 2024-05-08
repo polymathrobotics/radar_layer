@@ -195,8 +195,8 @@ void RadarLayer::updateBounds(
     for (size_t i = 0; i < number_of_objects; i++) {
       // getObstacleProbabilty(obstacle_array->obstacles[i]);
 
-      double length = obstacle_array->obstacles[i].size.x*5;
-      double width = obstacle_array->obstacles[i].size.y*5;
+      double length = obstacle_array->obstacles[i].size.x; //*5;
+      double width = obstacle_array->obstacles[i].size.y; //*5;
 
       int length_in_grid = int(length / resolution_);
       int width_in_grid = int(width / resolution_);
@@ -256,7 +256,7 @@ void RadarLayer::updateBounds(
             }
 
             unsigned int index = getIndex(mx, my);
-            uint8_t current_cost = costmap_[index];
+            // uint8_t current_cost = costmap_[index];
             // RCLCPP_INFO(logger_, "cost: %f", current_cost);
             //costmap_[index] = std::max(current_cost, uint8_t(LETHAL_OBSTACLE * probability * sqrt_2_pi_det_covariance * 2));
             
