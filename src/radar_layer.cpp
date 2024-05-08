@@ -241,7 +241,7 @@ void RadarLayer::updateBounds(
           uint8_t current_cost = costmap_[index];
           // RCLCPP_INFO(logger_, "probability: %f", probability);
           // RCLCPP_INFO(logger_, "sqrt_2_pi_det_covariance: %f", sqrt_2_pi_det_covariance);
-          RCLCPP_INFO(logger_, "cost: %i", current_cost);
+          // RCLCPP_INFO(logger_, "cost: %i", current_cost);
           costmap_[index] = std::max(current_cost, uint8_t(LETHAL_OBSTACLE * probability * sqrt_2_pi_det_covariance));
           
           //costmap_[index] = LETHAL_OBSTACLE;
