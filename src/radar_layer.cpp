@@ -202,12 +202,16 @@ void RadarLayer::updateBounds(
       Eigen::Vector2d mean(obstacle_array->obstacles[i].position.x, obstacle_array->obstacles[i].position.y);
       Eigen::MatrixXd covariance(2, 2);
       covariance(0, 0) = obstacle_array->obstacles[i].position_covariance.x;
+      covariance(0, 1) = 0.0;
       covariance(1, 1) = obstacle_array->obstacles[i].position_covariance.y;
+      covariance(1, 0) = 0.0;
       RCLCPP_INFO(logger_, "obstacle_array->obstacles[i].position_covariance.x %f", obstacle_array->obstacles[i].position_covariance.x);
       RCLCPP_INFO(logger_, "obstacle_array->obstacles[i].position_covariance.y %f", obstacle_array->obstacles[i].position_covariance.y);
       Eigen::MatrixXd inv_covariance = covariance.inverse();
       inv_covariance(0, 0) = 1/obstacle_array->obstacles[i].position_covariance.x;
       inv_covariance(1, 1) = 1/obstacle_array->obstacles[i].position_covariance.y;
+      inv_covariance(0, 1) = 0.0;
+      inv_covariance(1, 0) = 0.0;
       double sqrt_2_pi_det_covariance = sqrt(2 * M_PI * covariance.determinant());
     
       for (int x_i = 0; x_i < length_in_grid; x_i++) {
