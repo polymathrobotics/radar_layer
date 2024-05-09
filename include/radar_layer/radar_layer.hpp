@@ -153,6 +153,12 @@ public:
     double & sqrt_2_pi_det_covariance,
     double x, double y);
 
+  bool batchTransformPoints(
+    const std::vector<geometry_msgs::msg::PointStamped>& input_points,
+    std::vector<geometry_msgs::msg::PointStamped>& output_points,
+    const std::string& target_frame,
+    const tf2::Duration& timeout) const;
+
   Eigen::MatrixXd getProbabilityBatch(const Eigen::VectorXd& mean, 
     const Eigen::MatrixXd& inv_covariance,
     double sqrt_2_pi_det_covariance,
