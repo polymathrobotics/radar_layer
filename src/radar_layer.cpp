@@ -204,6 +204,9 @@ void RadarLayer::updateBounds(
       int number_of_time_steps = 3.0;
       double sample_time = 1.0;
 
+      Eigen::MatrixXd xs(length_in_grid, width_in_grid);
+      Eigen::MatrixXd ys(length_in_grid, width_in_grid);
+
       for (int k = 0; k < number_of_time_steps; ++k) {
 
         Eigen::VectorXd mean = projectMean(obstacle_array->obstacles[i], sample_time, k);
@@ -217,9 +220,6 @@ void RadarLayer::updateBounds(
         rclcpp::Time start_time_ = clock_->now();
         
         ///////////////////////////////////////////////////////////////
-
-        Eigen::MatrixXd xs(length_in_grid, width_in_grid);
-        Eigen::MatrixXd ys(length_in_grid, width_in_grid);
 
         for (int x_i = 0; x_i < length_in_grid; x_i++) {
             for (int y_i = 0; y_i < width_in_grid; y_i++) {
