@@ -192,7 +192,7 @@ void RadarLayer::updateBounds(
     int number_of_objects =
       obstacle_array->obstacles.size();
 
-    geometry_msgs::msg::TransformStamped radar_to_global_transform = tf_->lookupTransform(global_frame_, obstacle_array->header.frame_id, now(), rclcpp::Duration::from_seconds(2.0));
+    geometry_msgs::msg::TransformStamped radar_to_global_transform = tf_->lookupTransform(global_frame_, obstacle_array->header.frame_id, clock_->now(), rclcpp::Duration::from_seconds(2.0));
     RCLCPP_INFO(logger_, "target_frame: %s", global_frame_.c_str());
     RCLCPP_INFO(logger_, "source_frame: %s", obstacle_array->header.frame_id.c_str());
     
