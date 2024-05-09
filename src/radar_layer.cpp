@@ -258,6 +258,9 @@ void RadarLayer::updateBounds(
           for (size_t i = 0; i < points_in_global_frame.size(); i++) {
             unsigned int mx, my;
 
+            RCLCPP_INFO(logger_, "points_in_global_frame[i].point.x: %f", points_in_global_frame[i].point.x);
+            RCLCPP_INFO(logger_, "points_in_global_frame[i].point.y: %f", points_in_global_frame[i].point.y);
+
             if (worldToMap(points_in_global_frame[i].point.x, points_in_global_frame[i].point.y, mx, my)) {
               unsigned int index = getIndex(mx, my);
               uint8_t current_cost = costmap_[index];
