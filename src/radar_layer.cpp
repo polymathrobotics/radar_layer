@@ -258,7 +258,6 @@ void RadarLayer::updateBounds(
 
                 xs(x_i, y_i) = mean(0) + dx;
                 ys(x_i, y_i) = mean(1) + dy;
-                RCLCPP_INFO(logger_, "source_frame: %s", obstacle_array->header.frame_id.c_str());
                 points_in_obstacle_frame[point_in_obstacle_frame_index].header.stamp = obstacle_array->header.stamp;
                 points_in_obstacle_frame[point_in_obstacle_frame_index].header.frame_id = obstacle_array->header.frame_id;
                 points_in_obstacle_frame[point_in_obstacle_frame_index].point.x = obstacle_array->obstacles[i].position.x + dx;
