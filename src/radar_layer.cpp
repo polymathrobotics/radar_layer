@@ -208,6 +208,8 @@ void RadarLayer::updateBounds(
       Eigen::MatrixXd ys(length_in_grid, width_in_grid);
       std::vector<geometry_msgs::msg::PointStamped> points_in_obstacle_frame(length_in_grid * width_in_grid);
       std::vector<geometry_msgs::msg::PointStamped> points_in_global_frame(length_in_grid * width_in_grid);
+      std::vector<int> x_index;
+      std::vector<int> y_index;
 
       for (int k = 0; k < number_of_time_steps; ++k) {
 
@@ -237,6 +239,8 @@ void RadarLayer::updateBounds(
                 points_in_obstacle_frame[point_in_obstacle_frame_index].point.x = obstacle_array->obstacles[i].position.x + dx;
                 points_in_obstacle_frame[point_in_obstacle_frame_index].point.y = obstacle_array->obstacles[i].position.y + dy;
                 points_in_obstacle_frame[point_in_obstacle_frame_index].point.z = 0;
+                x_index[point_in_obstacle_frame_index] = x_i;
+                y_index[point_in_obstacle_frame_index] = y_i;
           }
         }
 
@@ -252,15 +256,12 @@ void RadarLayer::updateBounds(
 
         if(batch_transform_success){
           for (size_t i = 0; i < points_in_global_frame.size(); i++) {
-
-            int x_i = i % width_in_grid;
-            int y_i = i / width_in_grid;
             unsigned int mx, my;
 
             if (worldToMap(points_in_global_frame[i].point.x, points_in_global_frame[i].point.y, mx, my)) {
               unsigned int index = getIndex(mx, my);
               uint8_t current_cost = costmap_[index];
-              //costmap_[index] = std::max(current_cost, uint8_t(LETHAL_OBSTACLE * probabilities(x_i, y_i) * sqrt_2_pi_det_covariance));
+              costmap_[index] = std::max(current_cost, uint8_t(LETHAL_OBSTACLE * probabilities(x_index[i], y_index[i]) * sqrt_2_pi_det_covariance));
             }
           }
         }
