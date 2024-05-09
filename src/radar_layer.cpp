@@ -218,53 +218,20 @@ void RadarLayer::updateBounds(
         
         ///////////////////////////////////////////////////////////////
 
-        // Eigen::MatrixXd xs(length_in_grid, width_in_grid);
-        // Eigen::MatrixXd ys(length_in_grid, width_in_grid);
+        Eigen::MatrixXd xs(length_in_grid, width_in_grid);
+        Eigen::MatrixXd ys(length_in_grid, width_in_grid);
 
-        // for (int x_i = 0; x_i < length_in_grid; x_i++) {
-        //     for (int y_i = 0; y_i < width_in_grid; y_i++) {
-        //         xs(x_i, y_i) = mean(0) - length / 2 + x_i * resolution_;
-        //         ys(x_i, y_i) = mean(1) - width / 2 + y_i * resolution_;
-        //   }
-        // }
+        for (int x_i = 0; x_i < length_in_grid; x_i++) {
+            for (int y_i = 0; y_i < width_in_grid; y_i++) {
+                xs(x_i, y_i) = mean(0) - length / 2 + x_i * resolution_;
+                ys(x_i, y_i) = mean(1) - width / 2 + y_i * resolution_;
+          }
+        }
 
-        // Eigen::MatrixXd probabilities = getProbabilityBatch(mean, inv_covariance, sqrt_2_pi_det_covariance, xs, ys);
-
-        // for (int x_i = 0; x_i < length_in_grid; x_i++) {
-        //   for (int y_i = 0; y_i < width_in_grid; y_i++) {
-
-        //     transformPoint(
-        //       obstacle_array->header,
-        //       obstacle_array->obstacles[i],
-        //       point_in_global_frame,
-        //       -length / 2 + x_i * resolution_,
-        //       -width / 2 + y_i * resolution_);
-
-        //     double px = point_in_global_frame.point.x;
-        //     double py = point_in_global_frame.point.y;
-
-        //     // now we need to compute the map coordinates for the observation
-        //     unsigned int mx, my;
-
-        //     if (!worldToMap(px, py, mx, my)) {
-        //       continue;
-        //     }
-
-        //     unsigned int index = getIndex(mx, my);
-        //     uint8_t current_cost = costmap_[index];
-        //     costmap_[index] = std::max(current_cost, uint8_t(LETHAL_OBSTACLE * probabilities(x_i, y_i) * sqrt_2_pi_det_covariance));
-
-        //   }
-        // }
-
-        ////////////////////////////////////////////////////////
+        Eigen::MatrixXd probabilities = getProbabilityBatch(mean, inv_covariance, sqrt_2_pi_det_covariance, xs, ys);
 
         for (int x_i = 0; x_i < length_in_grid; x_i++) {
           for (int y_i = 0; y_i < width_in_grid; y_i++) {
-
-            point_in_radar_frame.point.x = mean(0) - length / 2 + x_i * resolution_;
-            point_in_radar_frame.point.y = mean(1) - width / 2 + y_i * resolution_;
-            double probability = getProbabilty(mean, inv_covariance, sqrt_2_pi_det_covariance, point_in_radar_frame.point.x, point_in_radar_frame.point.y);
 
             transformPoint(
               obstacle_array->header,
@@ -285,11 +252,44 @@ void RadarLayer::updateBounds(
 
             unsigned int index = getIndex(mx, my);
             uint8_t current_cost = costmap_[index];
-            // RCLCPP_INFO(logger_, "cost: %f", current_cost);
-            costmap_[index] = std::max(current_cost, uint8_t(LETHAL_OBSTACLE * probability * sqrt_2_pi_det_covariance));
+            costmap_[index] = std::max(current_cost, uint8_t(LETHAL_OBSTACLE * probabilities(x_i, y_i) * sqrt_2_pi_det_covariance));
 
           }
         }
+
+        ////////////////////////////////////////////////////////
+
+        // for (int x_i = 0; x_i < length_in_grid; x_i++) {
+        //   for (int y_i = 0; y_i < width_in_grid; y_i++) {
+
+        //     point_in_radar_frame.point.x = mean(0) - length / 2 + x_i * resolution_;
+        //     point_in_radar_frame.point.y = mean(1) - width / 2 + y_i * resolution_;
+        //     double probability = getProbabilty(mean, inv_covariance, sqrt_2_pi_det_covariance, point_in_radar_frame.point.x, point_in_radar_frame.point.y);
+
+        //     transformPoint(
+        //       obstacle_array->header,
+        //       obstacle_array->obstacles[i],
+        //       point_in_global_frame,
+        //       -length / 2 + x_i * resolution_,
+        //       -width / 2 + y_i * resolution_);
+
+        //     double px = point_in_global_frame.point.x;
+        //     double py = point_in_global_frame.point.y;
+
+        //     // now we need to compute the map coordinates for the observation
+        //     unsigned int mx, my;
+
+        //     if (!worldToMap(px, py, mx, my)) {
+        //       continue;
+        //     }
+
+        //     unsigned int index = getIndex(mx, my);
+        //     uint8_t current_cost = costmap_[index];
+        //     // RCLCPP_INFO(logger_, "cost: %f", current_cost);
+        //     costmap_[index] = std::max(current_cost, uint8_t(LETHAL_OBSTACLE * probability * sqrt_2_pi_det_covariance));
+
+        //   }
+        // }
 
         /////////////////////////////////////////////////////////////
 
