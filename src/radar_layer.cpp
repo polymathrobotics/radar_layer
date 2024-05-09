@@ -666,43 +666,43 @@ bool RadarLayer::batchTransform2DPoints(
 {
     bool all_transformed = true;
 
-    // Number of points
-    size_t n = input_points.size();
+    // // Number of points
+    // size_t n = input_points.size();
 
-    // Create matrices for input and output coordinates
-    Eigen::MatrixXd input_coords(3, n);  // Using a homogeneous coordinate system for easy matrix multiplication
-    Eigen::MatrixXd output_coords(3, n);
+    // // Create matrices for input and output coordinates
+    // Eigen::MatrixXd input_coords(3, n);  // Using a homogeneous coordinate system for easy matrix multiplication
+    // Eigen::MatrixXd output_coords(3, n);
 
-    // Fill input matrix
-    for (size_t i = 0; i < n; ++i) {
-        input_coords(0, i) = input_points[i].point.x;
-        input_coords(1, i) = input_points[i].point.y;
-        input_coords(2, i) = 1;  // Homogeneous coordinate
-    }
-
-    // Transformation matrix
-    Eigen::Matrix3d transform_matrix;
-    transform_matrix << x_x, x_y, -dx,
-                        y_x, y_y, -dy,
-                        0,   0,   1;
-
-    // Perform the matrix multiplication
-    output_coords = transform_matrix * input_coords;
-
-    // Assign results back to output_points
-    for (size_t i = 0; i < n; ++i) {
-        output_points[i].point.x = output_coords(0, i);
-        output_points[i].point.y = output_coords(1, i);
-        output_points[i].point.z = 0;  // Setting z to zero as specified
-    }
-
-    // for (size_t i = 0; i < input_points.size(); i++) {
-    //   output_points[i].header.stamp = input_points[i].header.stamp;
-    //   output_points[i].header.frame_id = target_frame;
-    //   output_points[i].point.x = input_points[i].point.x*x_x + input_points[i].point.y*x_y - dx;
-    //   output_points[i].point.y = input_points[i].point.x*y_x + input_points[i].point.y*y_y - dy;
-    //   output_points[i].point.z = 0;
+    // // Fill input matrix
+    // for (size_t i = 0; i < n; ++i) {
+    //     input_coords(0, i) = input_points[i].point.x;
+    //     input_coords(1, i) = input_points[i].point.y;
+    //     input_coords(2, i) = 1;  // Homogeneous coordinate
     // }
+
+    // // Transformation matrix
+    // Eigen::Matrix3d transform_matrix;
+    // transform_matrix << x_x, x_y, -dx,
+    //                     y_x, y_y, -dy,
+    //                     0,   0,   1;
+
+    // // Perform the matrix multiplication
+    // output_coords = transform_matrix * input_coords;
+
+    // // Assign results back to output_points
+    // for (size_t i = 0; i < n; ++i) {
+    //     output_points[i].point.x = output_coords(0, i);
+    //     output_points[i].point.y = output_coords(1, i);
+    //     output_points[i].point.z = 0;  // Setting z to zero as specified
+    // }
+
+    for (size_t i = 0; i < input_points.size(); i++) {
+      output_points[i].header.stamp = input_points[i].header.stamp;
+      output_points[i].header.frame_id = target_frame;
+      output_points[i].point.x = input_points[i].point.x*x_x + input_points[i].point.y*x_y - dx;
+      output_points[i].point.y = input_points[i].point.x*y_x + input_points[i].point.y*y_y - dy;
+      output_points[i].point.z = 0;
+    }
 
     return all_transformed;
 
