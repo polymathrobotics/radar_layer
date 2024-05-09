@@ -235,8 +235,12 @@ void RadarLayer::updateBounds(
     }
 
     for (size_t i = 0; i < number_of_objects; i++) {
-      double length = obstacle_array->obstacles[i].size.x*10;
-      double width = obstacle_array->obstacles[i].size.y*10;
+      // double length = obstacle_array->obstacles[i].size.x*10;
+      // double width = obstacle_array->obstacles[i].size.y*10;
+      double min_probability = 0.1;
+
+      double length = 2 * sqrt(-2*log(min_probability) * obstacle_array->obstacles[i].position_covariance.x);
+      double width = 2 * sqrt(-2*log(min_probability) * obstacle_array->obstacles[i].position_covariance.y);
 
       int length_in_grid = int(length / resolution_);
       int width_in_grid = int(width / resolution_);
