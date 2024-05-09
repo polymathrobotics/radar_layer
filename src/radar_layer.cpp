@@ -209,6 +209,10 @@ void RadarLayer::updateBounds(
       double roll, pitch, yaw;
       m.getRPY(roll, pitch, yaw);
 
+      RCLCPP_INFO(logger_, "x: %f", radar_to_global_transform.transform.translation.x);
+      RCLCPP_INFO(logger_, "y: %f", radar_to_global_transform.transform.translation.y);
+      RCLCPP_INFO(logger_, "z: %f", radar_to_global_transform.transform.translation.z);
+      
       RCLCPP_INFO(logger_, "roll: %f", roll);
       RCLCPP_INFO(logger_, "pitch: %f", pitch);
       RCLCPP_INFO(logger_, "yaw: %f", yaw);
