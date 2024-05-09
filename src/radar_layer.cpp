@@ -195,21 +195,21 @@ void RadarLayer::updateBounds(
     RCLCPP_INFO(logger_, "target_frame: %s", global_frame_.c_str());
     RCLCPP_INFO(logger_, "source_frame: %s", obstacle_array->header.frame_id.c_str());
     
-    geometry_msgs::msg::TransformStamped radar_to_global_transform = tf_->lookupTransform(global_frame_, obstacle_array->header.frame_id, clock_->now(), rclcpp::Duration::from_seconds(2.0));
+    // geometry_msgs::msg::TransformStamped radar_to_global_transform = tf_->lookupTransform(global_frame_, obstacle_array->header.frame_id, clock_->now(), rclcpp::Duration::from_seconds(2.0));
     
-    tf2::Quaternion q(
-      radar_to_global_transform.transform.rotation.x,
-      radar_to_global_transform.transform.rotation.y,
-      radar_to_global_transform.transform.rotation.z,
-      radar_to_global_transform.transform.rotation.w);
+    // tf2::Quaternion q(
+    //   radar_to_global_transform.transform.rotation.x,
+    //   radar_to_global_transform.transform.rotation.y,
+    //   radar_to_global_transform.transform.rotation.z,
+    //   radar_to_global_transform.transform.rotation.w);
   
-    tf2::Matrix3x3 m(q);
-    double roll, pitch, yaw;
-    m.getRPY(roll, pitch, yaw);
+    // tf2::Matrix3x3 m(q);
+    // double roll, pitch, yaw;
+    // m.getRPY(roll, pitch, yaw);
 
-    RCLCPP_INFO(logger_, "roll: %f", roll);
-    RCLCPP_INFO(logger_, "pitch: %f", pitch);
-    RCLCPP_INFO(logger_, "yaw: %f", yaw);
+    // RCLCPP_INFO(logger_, "roll: %f", roll);
+    // RCLCPP_INFO(logger_, "pitch: %f", pitch);
+    // RCLCPP_INFO(logger_, "yaw: %f", yaw);
 
 
 
