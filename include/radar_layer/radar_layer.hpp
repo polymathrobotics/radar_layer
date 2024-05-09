@@ -160,7 +160,12 @@ public:
     const tf2::Duration& timeout) const;
 
   bool batchTransform2DPoints(
-    const geometry_msgs::msg::TransformStamped & transform,
+    double x_x,
+    double x_y,
+    double y_x,
+    double y_y,
+    double dx,
+    double dy,
     const std::vector<geometry_msgs::msg::PointStamped>& input_points,
     std::vector<geometry_msgs::msg::PointStamped>& output_points,
     const std::string& target_frame,

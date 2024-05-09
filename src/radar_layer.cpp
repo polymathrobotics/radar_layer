@@ -193,36 +193,48 @@ void RadarLayer::updateBounds(
       obstacle_array->obstacles.size();
 
 
-    // if(number_of_objects > 0){
-    //   RCLCPP_INFO(logger_, "target_frame: %s", global_frame_.c_str());
-    //   RCLCPP_INFO(logger_, "source_frame: %s", obstacle_array->header.frame_id.c_str());
-      
-    //   geometry_msgs::msg::TransformStamped radar_to_global_transform = tf_->lookupTransform(obstacle_array->header.frame_id, global_frame_, clock_->now(), rclcpp::Duration::from_seconds(2.0));
-      
-    //   tf2::Quaternion q(
-    //     radar_to_global_transform.transform.rotation.x,
-    //     radar_to_global_transform.transform.rotation.y,
-    //     radar_to_global_transform.transform.rotation.z,
-    //     radar_to_global_transform.transform.rotation.w);
+
+    geometry_msgs::msg::TransformStamped radar_to_global_transform;
+    double dx;
+    double dy;
+    double x_x;
+    double x_y;
+    double y_x;
+    double y_y;
+
+    if(number_of_objects > 0){
+      radar_to_global_transform = tf_->lookupTransform(obstacle_array->header.frame_id, global_frame_, clock_->now(), rclcpp::Duration::from_seconds(2.0));
+
+      tf2::Quaternion q(
+        radar_to_global_transform.transform.rotation.x,
+        radar_to_global_transform.transform.rotation.y,
+        radar_to_global_transform.transform.rotation.z,
+        radar_to_global_transform.transform.rotation.w);
     
-    //   tf2::Matrix3x3 m(q);
-    //   double roll, pitch, yaw;
-    //   m.getRPY(roll, pitch, yaw);
+      tf2::Matrix3x3 m(q);
+      double roll, pitch, yaw;
+      m.getRPY(roll, pitch, yaw);
 
-    //   RCLCPP_INFO(logger_, "x: %f", radar_to_global_transform.transform.translation.x);
-    //   RCLCPP_INFO(logger_, "y: %f", radar_to_global_transform.transform.translation.y);
-    //   RCLCPP_INFO(logger_, "z: %f", radar_to_global_transform.transform.translation.z);
-      
-    //   RCLCPP_INFO(logger_, "roll: %f", roll);
-    //   RCLCPP_INFO(logger_, "pitch: %f", pitch);
-    //   RCLCPP_INFO(logger_, "yaw: %f", yaw);
-    // }
+      dx = radar_to_global_transform.transform.translation.x;
+      dy = radar_to_global_transform.transform.translation.y;
 
+      const double cos_roll = std::cos(roll);
+      const double sin_roll = std::sin(roll);
 
+      const double cos_pitch = std::cos(pitch);
+      const double sin_pitch = std::sin(pitch);
+
+      const double cos_yaw = std::cos(yaw);
+      const double sin_yaw = std::sin(yaw);
+
+      x_x = cos_yaw*cos_pitch;
+      x_y = sin_yaw*cos_pitch;
+
+      y_x = cos_yaw*sin_pitch*sin_roll - sin_yaw*cos_roll;
+      y_y = sin_yaw*sin_pitch*sin_roll + cos_yaw*cos_roll;
+    }
 
     for (size_t i = 0; i < number_of_objects; i++) {
-      // getObstacleProbabilty(obstacle_array->obstacles[i]);
-
       double length = obstacle_array->obstacles[i].size.x*5;
       double width = obstacle_array->obstacles[i].size.y*5;
 
@@ -277,9 +289,12 @@ void RadarLayer::updateBounds(
            sqrt_2_pi_det_covariance, 
            xs, ys);
 
-        geometry_msgs::msg::TransformStamped radar_to_global_transform = tf_->lookupTransform(obstacle_array->header.frame_id, global_frame_, clock_->now(), rclcpp::Duration::from_seconds(2.0));
-
-        bool batch_transform_success = batchTransform2DPoints(radar_to_global_transform,
+        bool batch_transform_success = batchTransform2DPoints(x_x,
+           x_y,
+           y_x,
+           y_y,
+           dx,
+           dy,
            points_in_obstacle_frame, 
            points_in_global_frame, 
            global_frame_, 
@@ -638,7 +653,12 @@ std::vector<size_t> RadarLayer::findUnmatchedIndices(
 }
 
 bool RadarLayer::batchTransform2DPoints(
-    const geometry_msgs::msg::TransformStamped & transform,
+    double x_x,
+    double x_y,
+    double y_x,
+    double y_y,
+    double dx,
+    double dy,
     const std::vector<geometry_msgs::msg::PointStamped>& input_points,
     std::vector<geometry_msgs::msg::PointStamped>& output_points,
     const std::string& target_frame,
@@ -646,39 +666,9 @@ bool RadarLayer::batchTransform2DPoints(
 {
     bool all_transformed = true;
 
-    double dx = transform.transform.translation.x;
-    double dy = transform.transform.translation.y;
-    
-    tf2::Quaternion q(
-        transform.transform.rotation.x,
-        transform.transform.rotation.y,
-        transform.transform.rotation.z,
-        transform.transform.rotation.w);
-    
-    tf2::Matrix3x3 m(q);
-    double roll, pitch, yaw;
-    m.getRPY(roll, pitch, yaw);
-
-    const double cos_roll = std::cos(roll);
-    const double sin_roll = std::sin(roll);
-
-    const double cos_pitch = std::cos(pitch);
-    const double sin_pitch = std::sin(pitch);
-
-    const double cos_yaw = std::cos(yaw);
-    const double sin_yaw = std::sin(yaw);
-
-    double x_x = cos_yaw*cos_pitch;
-    double x_y = sin_yaw*cos_pitch;
-
-    double y_x = cos_yaw*sin_pitch*sin_roll - sin_yaw*cos_roll;
-    double y_y = sin_yaw*sin_pitch*sin_roll + cos_yaw*cos_roll;
-
     for (size_t i = 0; i < input_points.size(); i++) {
       output_points[i].header.stamp = input_points[i].header.stamp;
       output_points[i].header.frame_id = target_frame;
-      // output_points[i].point.x = input_points[i].point.x*cos_yaw + input_points[i].point.y*sin_yaw + dx;
-      // output_points[i].point.y = -input_points[i].point.x*sin_yaw + input_points[i].point.y*cos_yaw + dy;
       output_points[i].point.x = input_points[i].point.x*x_x + input_points[i].point.y*x_y - dx;
       output_points[i].point.y = input_points[i].point.x*y_x + input_points[i].point.y*y_y - dy;
       output_points[i].point.z = 0;
