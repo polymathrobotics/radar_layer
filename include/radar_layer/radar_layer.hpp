@@ -130,34 +130,38 @@ public:
     const nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr obstacles,
     const nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr detections);
 
-  void removeUnmatchedObstacles(int number_of_obstacles, 
-    std::vector<std::pair<size_t, size_t>> matched_indices, 
+  void removeUnmatchedObstacles(
+    int number_of_obstacles,
+    std::vector<std::pair<size_t, size_t>> matched_indices,
     const nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr obstacles);
 
-  void addUnmatchedDetections(int number_of_detections, 
-    std::vector<std::pair<size_t, size_t>> matched_indices, 
+  void addUnmatchedDetections(
+    int number_of_detections,
+    std::vector<std::pair<size_t, size_t>> matched_indices,
     const nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr obstacles,
     const nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr detections);
 
   std::vector<size_t> findUnmatchedIndices(
     size_t number_of_elements,
-    const std::vector<std::pair<size_t, size_t>>& matched_indicies,
+    const std::vector<std::pair<size_t, size_t>> & matched_indicies,
     bool check_first_index);
 
-  void updateGaussian(nav2_dynamic_msgs::msg::Obstacle & obstacle,
+  void updateGaussian(
+    nav2_dynamic_msgs::msg::Obstacle & obstacle,
     const nav2_dynamic_msgs::msg::Obstacle & detection,
     double dt);
 
-  double getProbabilty(const Eigen::MatrixXd & mean,
+  double getProbabilty(
+    const Eigen::MatrixXd & mean,
     const Eigen::MatrixXd & inv_covariance,
     double & sqrt_2_pi_det_covariance,
     double x, double y);
 
   bool batchTransformPoints(
-    const std::vector<geometry_msgs::msg::PointStamped>& input_points,
-    std::vector<geometry_msgs::msg::PointStamped>& output_points,
-    const std::string& target_frame,
-    const tf2::Duration& timeout) const;
+    const std::vector<geometry_msgs::msg::PointStamped> & input_points,
+    std::vector<geometry_msgs::msg::PointStamped> & output_points,
+    const std::string & target_frame,
+    const tf2::Duration & timeout) const;
 
   bool batchTransform2DPoints(
     double x_x,
@@ -166,18 +170,19 @@ public:
     double y_y,
     double dx,
     double dy,
-    const std::vector<geometry_msgs::msg::PointStamped>& input_points,
-    std::vector<geometry_msgs::msg::PointStamped>& output_points,
-    const std::string& target_frame,
-    const tf2::Duration& timeout) const;
+    const std::vector<geometry_msgs::msg::PointStamped> & input_points,
+    std::vector<geometry_msgs::msg::PointStamped> & output_points,
+    const std::string & target_frame,
+    const tf2::Duration & timeout) const;
 
-  Eigen::MatrixXd getProbabilityBatch(const Eigen::VectorXd& mean, 
-    const Eigen::MatrixXd& inv_covariance,
+  Eigen::MatrixXd getProbabilityBatch(
+    const Eigen::VectorXd & mean,
+    const Eigen::MatrixXd & inv_covariance,
     double sqrt_2_pi_det_covariance,
-    const Eigen::MatrixXd& xs,
-    const Eigen::MatrixXd& ys);
+    const Eigen::MatrixXd & xs,
+    const Eigen::MatrixXd & ys);
 
-  void getObstacleProbabilty( nav2_dynamic_msgs::msg::Obstacle & obstacle);
+  void getObstacleProbabilty(nav2_dynamic_msgs::msg::Obstacle & obstacle);
 
   bool transformPoint(
     const std_msgs::msg::Header obstacle_frame,
