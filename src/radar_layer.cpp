@@ -236,7 +236,7 @@ void RadarLayer::updateBounds(
       y_y = sin_yaw * sin_pitch * sin_roll + cos_yaw * cos_roll;
     }
 
-    for (size_t i = 0; i < number_of_objects; i++) {
+    for (size_t i = 0; i < 1; i++){ //number_of_objects; i++) {
       double min_probability = 0.001;
 
       int number_of_time_steps = 10.0;
@@ -252,7 +252,7 @@ void RadarLayer::updateBounds(
 
         double length = 2 * sqrt(-2 * log(min_probability) * covariance(0, 0));
         double width = 2 * sqrt(-2 * log(min_probability) * covariance(1, 1));
-        
+
         int length_in_grid = int(length / resolution_);
         int width_in_grid = int(width / resolution_);
 
