@@ -237,38 +237,31 @@ void RadarLayer::updateBounds(
     }
 
     for (size_t i = 0; i < number_of_objects; i++) {
-      double min_probability = 0.01;
-
-      double length = 2 * sqrt(
-        -2 * log(
-          min_probability) * obstacle_array->obstacles[i].position_covariance.x);
-      double width = 2 * sqrt(
-        -2 * log(
-          min_probability) * obstacle_array->obstacles[i].position_covariance.y);
-
-      int length_in_grid = int(length / resolution_);
-      int width_in_grid = int(width / resolution_);
+      double min_probability = 0.001;
 
       int number_of_time_steps = 10.0;
       double sample_time = 1.0;
 
-      Eigen::MatrixXd xs(length_in_grid, width_in_grid);
-      Eigen::MatrixXd ys(length_in_grid, width_in_grid);
-      std::vector<geometry_msgs::msg::PointStamped> points_in_obstacle_frame(length_in_grid *
-        width_in_grid);
-      std::vector<geometry_msgs::msg::PointStamped> points_in_global_frame(length_in_grid *
-        width_in_grid);
-      std::vector<int> x_index(length_in_grid * width_in_grid);
-      std::vector<int> y_index(length_in_grid * width_in_grid);
-
       for (int k = 0; k < number_of_time_steps; ++k) {
 
         Eigen::VectorXd mean = projectMean(obstacle_array->obstacles[i], sample_time, k);
-        Eigen::MatrixXd covariance =
-          projectCovariance(obstacle_array->obstacles[i], sample_time, k);
+        Eigen::MatrixXd covariance = projectCovariance(obstacle_array->obstacles[i], sample_time, k);
         Eigen::MatrixXd inv_covariance = Eigen::MatrixXd::Zero(2, 2);
         inv_covariance(0, 0) = 1 / covariance(0, 0);
         inv_covariance(1, 1) = 1 / covariance(1, 1);
+
+        double length = 2 * sqrt(-2 * log(min_probability) * covariance(0, 0));
+        double width = 2 * sqrt(-2 * log(min_probability) * covariance(1, 1));
+        
+        int length_in_grid = int(length / resolution_);
+        int width_in_grid = int(width / resolution_);
+
+        Eigen::MatrixXd xs(length_in_grid, width_in_grid);
+        Eigen::MatrixXd ys(length_in_grid, width_in_grid);
+        std::vector<geometry_msgs::msg::PointStamped> points_in_obstacle_frame(length_in_grid * width_in_grid);
+        std::vector<geometry_msgs::msg::PointStamped> points_in_global_frame(length_in_grid * width_in_grid);
+        std::vector<int> x_index(length_in_grid * width_in_grid);
+        std::vector<int> y_index(length_in_grid * width_in_grid);
 
         double sqrt_2_pi_det_covariance = sqrt(2 * M_PI * covariance(0, 0) * covariance(1, 1));
 
@@ -706,43 +699,43 @@ bool RadarLayer::batchTransform2DPoints(
 {
   bool all_transformed = true;
 
-  // Number of points
-  size_t n = input_points.size();
+  // // Number of points
+  // size_t n = input_points.size();
 
-  // Create matrices for input and output coordinates
-  Eigen::MatrixXd input_coords(3, n);  // Using a homogeneous coordinate system for easy matrix multiplication
-  Eigen::MatrixXd output_coords(3, n);
+  // // Create matrices for input and output coordinates
+  // Eigen::MatrixXd input_coords(3, n);  // Using a homogeneous coordinate system for easy matrix multiplication
+  // Eigen::MatrixXd output_coords(3, n);
 
-  // Fill input matrix
-  for (size_t i = 0; i < n; ++i) {
-      input_coords(0, i) = input_points[i].point.x;
-      input_coords(1, i) = input_points[i].point.y;
-      input_coords(2, i) = 1;  // Homogeneous coordinate
-  }
-
-  // Transformation matrix
-  Eigen::Matrix3d transform_matrix;
-  transform_matrix << x_x, x_y, -dx,
-                      y_x, y_y, -dy,
-                      0,   0,   1;
-
-  // Perform the matrix multiplication
-  output_coords = transform_matrix * input_coords;
-
-  // Assign results back to output_points
-  for (size_t i = 0; i < n; ++i) {
-      output_points[i].point.x = output_coords(0, i);
-      output_points[i].point.y = output_coords(1, i);
-      output_points[i].point.z = 0;  // Setting z to zero as specified
-  }
-
-  // for (size_t i = 0; i < input_points.size(); i++) {
-  //   output_points[i].header.stamp = input_points[i].header.stamp;
-  //   output_points[i].header.frame_id = target_frame;
-  //   output_points[i].point.x = input_points[i].point.x * x_x + input_points[i].point.y * x_y - dx;
-  //   output_points[i].point.y = input_points[i].point.x * y_x + input_points[i].point.y * y_y - dy;
-  //   output_points[i].point.z = 0;
+  // // Fill input matrix
+  // for (size_t i = 0; i < n; ++i) {
+  //     input_coords(0, i) = input_points[i].point.x;
+  //     input_coords(1, i) = input_points[i].point.y;
+  //     input_coords(2, i) = 1;  // Homogeneous coordinate
   // }
+
+  // // Transformation matrix
+  // Eigen::Matrix3d transform_matrix;
+  // transform_matrix << x_x, x_y, -dx,
+  //                     y_x, y_y, -dy,
+  //                     0,   0,   1;
+
+  // // Perform the matrix multiplication
+  // output_coords = transform_matrix * input_coords;
+
+  // // Assign results back to output_points
+  // for (size_t i = 0; i < n; ++i) {
+  //     output_points[i].point.x = output_coords(0, i);
+  //     output_points[i].point.y = output_coords(1, i);
+  //     output_points[i].point.z = 0;  // Setting z to zero as specified
+  // }
+
+  for (size_t i = 0; i < input_points.size(); i++) {
+    output_points[i].header.stamp = input_points[i].header.stamp;
+    output_points[i].header.frame_id = target_frame;
+    output_points[i].point.x = input_points[i].point.x * x_x + input_points[i].point.y * x_y - dx;
+    output_points[i].point.y = input_points[i].point.x * y_x + input_points[i].point.y * y_y - dy;
+    output_points[i].point.z = 0;
+  }
 
   return all_transformed;
 
