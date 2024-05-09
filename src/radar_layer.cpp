@@ -261,7 +261,8 @@ void RadarLayer::updateBounds(
             if (worldToMap(points_in_global_frame[i].point.x, points_in_global_frame[i].point.y, mx, my)) {
               unsigned int index = getIndex(mx, my);
               uint8_t current_cost = costmap_[index];
-              costmap_[index] = std::max(current_cost, uint8_t(LETHAL_OBSTACLE * probabilities(x_index[i], y_index[i]) * sqrt_2_pi_det_covariance));
+              RCLCPP_INFO(logger_, "probabilities: %f", probabilities(x_index[i], y_index[i]));
+              //costmap_[index] = std::max(current_cost, uint8_t(LETHAL_OBSTACLE * probabilities(x_index[i], y_index[i]) * sqrt_2_pi_det_covariance));
             }
           }
         }
