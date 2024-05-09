@@ -238,13 +238,9 @@ void RadarLayer::updateBounds(
 
     for (size_t i = 0; i < number_of_objects; i++) {
 
-      if (i > 1){
-        break;
-      }
-      
       double min_probability = 0.001;
 
-      int number_of_time_steps = 10.0;
+      int number_of_time_steps = 1.0;
       double sample_time = 1.0;
 
       for (int k = 0; k < number_of_time_steps; ++k) {
