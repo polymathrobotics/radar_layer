@@ -214,6 +214,10 @@ void RadarLayer::updateBounds(
 
         double sqrt_2_pi_det_covariance = sqrt(2 * M_PI * covariance(0, 0) * covariance(1, 1));
 
+        ///////////////////////////////////////////////////////////////
+
+        const clock_t begin_time = clock();
+
         Eigen::MatrixXd xs(length_in_grid, width_in_grid);
         Eigen::MatrixXd ys(length_in_grid, width_in_grid);
 
@@ -252,6 +256,10 @@ void RadarLayer::updateBounds(
 
           }
         }
+
+        std::cout << float( clock () - begin_time ) /  CLOCKS_PER_SEC;
+
+        ////////////////////////////////////////////////////////
 
         // for (int x_i = 0; x_i < length_in_grid; x_i++) {
         //   for (int y_i = 0; y_i < width_in_grid; y_i++) {
@@ -512,7 +520,6 @@ void RadarLayer::getObstacleProbabilty(nav2_dynamic_msgs::msg::Obstacle & obstac
       }
     }
 }
-
 
 Eigen::MatrixXd RadarLayer::getProbabilityBatch(
     const Eigen::VectorXd& mean, 
