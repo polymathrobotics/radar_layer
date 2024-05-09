@@ -237,7 +237,7 @@ void RadarLayer::updateBounds(
     for (size_t i = 0; i < number_of_objects; i++) {
       // double length = obstacle_array->obstacles[i].size.x*10;
       // double width = obstacle_array->obstacles[i].size.y*10;
-      double min_probability = 0.1;
+      double min_probability = 0.001;
 
       double length = 2 * sqrt(-2*log(min_probability) * obstacle_array->obstacles[i].position_covariance.x);
       double width = 2 * sqrt(-2*log(min_probability) * obstacle_array->obstacles[i].position_covariance.y);
@@ -245,7 +245,7 @@ void RadarLayer::updateBounds(
       int length_in_grid = int(length / resolution_);
       int width_in_grid = int(width / resolution_);
     
-      int number_of_time_steps = 3.0;
+      int number_of_time_steps = 1.0;
       double sample_time = 1.0;
 
       Eigen::MatrixXd xs(length_in_grid, width_in_grid);
