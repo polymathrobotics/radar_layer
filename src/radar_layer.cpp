@@ -208,8 +208,8 @@ void RadarLayer::updateBounds(
       Eigen::MatrixXd ys(length_in_grid, width_in_grid);
       std::vector<geometry_msgs::msg::PointStamped> points_in_obstacle_frame(length_in_grid * width_in_grid);
       std::vector<geometry_msgs::msg::PointStamped> points_in_global_frame(length_in_grid * width_in_grid);
-      std::vector<int> x_index;
-      std::vector<int> y_index;
+      std::vector<int> x_index(length_in_grid * width_in_grid);
+      std::vector<int> y_index(length_in_grid * width_in_grid);
 
       for (int k = 0; k < number_of_time_steps; ++k) {
 
@@ -258,16 +258,10 @@ void RadarLayer::updateBounds(
           for (size_t i = 0; i < points_in_global_frame.size(); i++) {
             unsigned int mx, my;
 
-            RCLCPP_INFO(logger_, "points_in_global_frame[i].point.x: %f", points_in_global_frame[i].point.x);
-            RCLCPP_INFO(logger_, "points_in_global_frame[i].point.y: %f", points_in_global_frame[i].point.y);
-
             if (worldToMap(points_in_global_frame[i].point.x, points_in_global_frame[i].point.y, mx, my)) {
               unsigned int index = getIndex(mx, my);
               uint8_t current_cost = costmap_[index];
-              RCLCPP_INFO(logger_, "x_index[i]: %i", x_index[i]);
-              RCLCPP_INFO(logger_, "y_index[i]: %i", y_index[i]);
-              RCLCPP_INFO(logger_, "probabilities: %f", probabilities(x_index[i], y_index[i]));
-              //costmap_[index] = std::max(current_cost, uint8_t(LETHAL_OBSTACLE * probabilities(x_index[i], y_index[i]) * sqrt_2_pi_det_covariance));
+              costmap_[index] = std::max(current_cost, uint8_t(LETHAL_OBSTACLE * probabilities(x_index[i], y_index[i]) * sqrt_2_pi_det_covariance));
             }
           }
         }
