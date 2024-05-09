@@ -214,9 +214,9 @@ void RadarLayer::updateBounds(
 
         double sqrt_2_pi_det_covariance = sqrt(2 * M_PI * covariance(0, 0) * covariance(1, 1));
 
+        rclcpp::Time start_time_ = clock_->now();
+        
         ///////////////////////////////////////////////////////////////
-
-        const clock_t begin_time = clock();
 
         Eigen::MatrixXd xs(length_in_grid, width_in_grid);
         Eigen::MatrixXd ys(length_in_grid, width_in_grid);
@@ -257,8 +257,6 @@ void RadarLayer::updateBounds(
           }
         }
 
-        std::cout << float( clock () - begin_time ) /  CLOCKS_PER_SEC;
-
         ////////////////////////////////////////////////////////
 
         // for (int x_i = 0; x_i < length_in_grid; x_i++) {
@@ -292,6 +290,10 @@ void RadarLayer::updateBounds(
 
         //   }
         // }
+
+        rclcpp::Duration comp_time_ = clock_->now() - start_time_;
+
+        RCLCPP_INFO(logger_, "Duration %f", comp_time_.seconds());
       }
 
     }
