@@ -192,6 +192,26 @@ void RadarLayer::updateBounds(
     int number_of_objects =
       obstacle_array->obstacles.size();
 
+    geometry_msgs::msg::TransformStamped radar_to_global_transform = tf_->lookupTransform(global_frame_, obstacle_array->header.frame_id, now(), rclcpp::Duration::from_seconds(2.0));
+    RCLCPP_INFO(logger_, "target_frame: %s", global_frame_.c_str());
+    RCLCPP_INFO(logger_, "source_frame: %s", obstacle_array->header.frame_id.c_str());
+    
+    tf2::Quaternion q(
+      radar_to_global_transform.transform.rotation.x,
+      radar_to_global_transform.transform.rotation.y,
+      radar_to_global_transform.transform.rotation.z,
+      radar_to_global_transform.transform.rotation.w);
+  
+    tf2::Matrix3x3 m(q);
+    double roll, pitch, yaw;
+    m.getRPY(roll, pitch, yaw);
+
+    RCLCPP_INFO(logger_, "roll: %f", roll);
+    RCLCPP_INFO(logger_, "pitch: %f", pitch);
+    RCLCPP_INFO(logger_, "yaw: %f", yaw);
+
+
+
     for (size_t i = 0; i < number_of_objects; i++) {
       // getObstacleProbabilty(obstacle_array->obstacles[i]);
 
@@ -249,6 +269,7 @@ void RadarLayer::updateBounds(
            sqrt_2_pi_det_covariance, 
            xs, ys);
 
+
         bool batch_transform_success = batchTransformPoints(points_in_obstacle_frame, 
            points_in_global_frame, 
            global_frame_, 
@@ -265,33 +286,6 @@ void RadarLayer::updateBounds(
             }
           }
         }
-
-        // for (int x_i = 0; x_i < length_in_grid; x_i++) {
-        //   for (int y_i = 0; y_i < width_in_grid; y_i++) {
-
-        //     transformPoint(
-        //       obstacle_array->header,
-        //       obstacle_array->obstacles[i],
-        //       point_in_global_frame,
-        //       -length / 2 + x_i * resolution_,
-        //       -width / 2 + y_i * resolution_);
-
-        //     double px = point_in_global_frame.point.x;
-        //     double py = point_in_global_frame.point.y;
-
-        //     // now we need to compute the map coordinates for the observation
-        //     unsigned int mx, my;
-
-        //     if (!worldToMap(px, py, mx, my)) {
-        //       continue;
-        //     }
-
-        //     unsigned int index = getIndex(mx, my);
-        //     uint8_t current_cost = costmap_[index];
-        //     costmap_[index] = std::max(current_cost, uint8_t(LETHAL_OBSTACLE * probabilities(x_i, y_i) * sqrt_2_pi_det_covariance));
-
-        //   }
-        // }
 
         ////////////////////////////////////////////////////////
 
@@ -626,6 +620,33 @@ std::vector<size_t> RadarLayer::findUnmatchedIndices(
     }
 
     return unmatched_indices;
+}
+
+bool RadarLayer::batchTransform2DPoints(
+    const geometry_msgs::msg::TransformStamped & transform,
+    const std::vector<geometry_msgs::msg::PointStamped>& input_points,
+    std::vector<geometry_msgs::msg::PointStamped>& output_points,
+    const std::string& target_frame,
+    const tf2::Duration& timeout) const
+{
+    bool all_transformed = true;
+
+    double dx = transform.transform.translation.x;
+    double dy = transform.transform.translation.y;
+    double yaw = 0.0; //tf2::getYaw(transform.transform.rotation);
+    const double cos_theta = std::cos(yaw);
+    const double sin_theta = std::sin(yaw);
+
+    for (size_t i = 0; i < input_points.size(); i++) {
+      output_points[i].header.stamp = input_points[i].header.stamp;
+      output_points[i].header.frame_id = target_frame;
+      output_points[i].point.x = input_points[i].point.x*cos_theta + input_points[i].point.y*sin_theta + dx;
+      output_points[i].point.y = -input_points[i].point.x*sin_theta + input_points[i].point.y*cos_theta + dy;
+      output_points[i].point.z = 0;
+    }
+
+    return all_transformed;
+
 }
 
 bool RadarLayer::batchTransformPoints(
