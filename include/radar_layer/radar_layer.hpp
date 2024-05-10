@@ -224,6 +224,9 @@ private:
   int combination_method_;
   double min_bound;
   double max_bound;
+  double min_probability_;
+  int number_of_time_steps_;
+  double sample_time_;
   std::string global_frame_;
 
   tf2::Duration transform_tolerance_;

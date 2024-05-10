@@ -32,9 +32,10 @@ void RadarLayer::onInitialize()
 
   declareParameter("enabled", rclcpp::ParameterValue(true));
   declareParameter("combination_method", rclcpp::ParameterValue(1));
-  declareParameter(
-    "observation_sources",
-    rclcpp::ParameterValue(std::string("")));
+  declareParameter("observation_sources",rclcpp::ParameterValue(std::string("")));
+  declareParameter("minimum_probability", rclcpp::ParameterValue(0.05));
+  declareParameter("number_of_time_steps", rclcpp::ParameterValue(1.0));
+  declareParameter("sample_time",rclcpp::ParameterValue(0.1));
 
   auto node = node_.lock();
 
@@ -45,6 +46,9 @@ void RadarLayer::onInitialize()
   node->get_parameter(name_ + "." + "enabled", enabled_);
   node->get_parameter(name_ + "." + "combination_method", combination_method_);
   node->get_parameter(name_ + "." + "observation_sources", topics_string);
+  node->get_parameter(name_ + "." + "minimum_probability", min_probability_);
+  node->get_parameter(name_ + "." + "number_of_time_steps", number_of_time_steps_);
+  node->get_parameter(name_ + "." + "sample_time", sample_time_);
   node->get_parameter("transform_tolerance", transform_tolerance);
   transform_tolerance_ = tf2::durationFromSec(transform_tolerance);
 
@@ -204,55 +208,16 @@ void RadarLayer::updateBounds(
     if (number_of_objects > 0) {
 
       getTransformCoefficients(obstacle_array->header.frame_id, global_frame_, dx, dy, x_x, x_y, y_x, y_y);
-
-      // radar_to_global_transform = tf_->lookupTransform(
-      //   obstacle_array->header.frame_id,
-      //   global_frame_,
-      //   clock_->now(), rclcpp::Duration::from_seconds(2.0));
-
-      // tf2::Quaternion q(
-      //   radar_to_global_transform.transform.rotation.x,
-      //   radar_to_global_transform.transform.rotation.y,
-      //   radar_to_global_transform.transform.rotation.z,
-      //   radar_to_global_transform.transform.rotation.w);
-
-      // tf2::Matrix3x3 m(q);
-      // double roll, pitch, yaw;
-      // m.getRPY(roll, pitch, yaw);
-
-      // dx = radar_to_global_transform.transform.translation.x;
-      // dy = radar_to_global_transform.transform.translation.y;
-
-      // const double cos_roll = std::cos(roll);
-      // const double sin_roll = std::sin(roll);
-
-      // const double cos_pitch = std::cos(pitch);
-      // const double sin_pitch = std::sin(pitch);
-
-      // const double cos_yaw = std::cos(yaw);
-      // const double sin_yaw = std::sin(yaw);
-
-      // x_x = cos_yaw * cos_pitch;
-      // x_y = sin_yaw * cos_pitch;
-
-      // y_x = cos_yaw * sin_pitch * sin_roll - sin_yaw * cos_roll;
-      // y_y = sin_yaw * sin_pitch * sin_roll + cos_yaw * cos_roll;
     }
 
     for (size_t i = 0; i < number_of_objects; i++) {
 
-      double min_probability = 0.05;
-
-      int number_of_time_steps = 1.0;
-      double sample_time = 0.1;
-
-      //Initial covariance scaling factor
       double sqrt_2_pi_det_covariance_0 = sqrt(2 * M_PI * obstacle_array->obstacles[i].position_covariance.x * obstacle_array->obstacles[i].position_covariance.y);
 
-      for (int k = 0; k < number_of_time_steps; ++k) {
+      for (int k = 0; k < number_of_time_steps_; ++k) {
 
-        Eigen::VectorXd mean = projectMean(obstacle_array->obstacles[i], sample_time, k);
-        Eigen::MatrixXd covariance = projectCovariance(obstacle_array->obstacles[i], sample_time, k);
+        Eigen::VectorXd mean = projectMean(obstacle_array->obstacles[i], sample_time_, k);
+        Eigen::MatrixXd covariance = projectCovariance(obstacle_array->obstacles[i], sample_time_, k);
         Eigen::MatrixXd inv_covariance = Eigen::MatrixXd::Zero(2, 2);
         inv_covariance(0, 0) = 1 / covariance(0, 0);
         inv_covariance(1, 1) = 1 / covariance(1, 1);
@@ -260,11 +225,11 @@ void RadarLayer::updateBounds(
         double sqrt_2_pi_det_covariance = sqrt(2 * M_PI * covariance(0, 0) * covariance(1, 1));
         double covariance_ratio = sqrt_2_pi_det_covariance_0/sqrt_2_pi_det_covariance;
 
-        if(covariance_ratio < min_probability){
+        if(covariance_ratio < min_probability_){
           break;
         }else{
-          double length = 2 * sqrt(-2 * (log(min_probability) - log(covariance_ratio)) * covariance(0, 0));
-          double width = 2 * sqrt(-2 * (log(min_probability) - log(covariance_ratio)) * covariance(1, 1));    
+          double length = 2 * sqrt(-2 * (log(min_probability_) - log(covariance_ratio)) * covariance(0, 0));
+          double width = 2 * sqrt(-2 * (log(min_probability_) - log(covariance_ratio)) * covariance(1, 1));    
           int length_in_grid = int(length / resolution_);
           int width_in_grid = int(width / resolution_);
 
