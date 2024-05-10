@@ -256,90 +256,78 @@ void RadarLayer::updateBounds(
 
         double sqrt_2_pi_det_covariance = sqrt(2 * M_PI * covariance(0, 0) * covariance(1, 1));
         double covariance_ratio = sqrt_2_pi_det_covariance_0/sqrt_2_pi_det_covariance;
-        RCLCPP_INFO(logger_, "ratio: %f", covariance_ratio);
-
-        int length_in_grid;
-        int width_in_grid;
-        double length;
-        double width;
 
         if(covariance_ratio < min_probability){
-          length = 0;
-          width = 0;
-          length_in_grid = 0;
-          width_in_grid = 0;
+          break;
         }else{
-          length = 2 * sqrt(-2 * (log(min_probability) - log(covariance_ratio)) * covariance(0, 0));
-          width = 2 * sqrt(-2 * (log(min_probability) - log(covariance_ratio)) * covariance(1, 1));    
-          RCLCPP_INFO(logger_, "length: %f", length);
-          RCLCPP_INFO(logger_, "width: %f", width);
-          length_in_grid = int(length / resolution_);
-          width_in_grid = int(width / resolution_);
-        }
+          double length = 2 * sqrt(-2 * (log(min_probability) - log(covariance_ratio)) * covariance(0, 0));
+          double width = 2 * sqrt(-2 * (log(min_probability) - log(covariance_ratio)) * covariance(1, 1));    
+          int length_in_grid = int(length / resolution_);
+          int width_in_grid = int(width / resolution_);
 
-        Eigen::MatrixXd xs(length_in_grid, width_in_grid);
-        Eigen::MatrixXd ys(length_in_grid, width_in_grid);
-        std::vector<geometry_msgs::msg::PointStamped> points_in_obstacle_frame(length_in_grid * width_in_grid);
-        std::vector<geometry_msgs::msg::PointStamped> points_in_global_frame(length_in_grid * width_in_grid);
-        std::vector<int> x_index(length_in_grid * width_in_grid);
-        std::vector<int> y_index(length_in_grid * width_in_grid);
+          Eigen::MatrixXd xs(length_in_grid, width_in_grid);
+          Eigen::MatrixXd ys(length_in_grid, width_in_grid);
+          std::vector<geometry_msgs::msg::PointStamped> points_in_obstacle_frame(length_in_grid * width_in_grid);
+          std::vector<geometry_msgs::msg::PointStamped> points_in_global_frame(length_in_grid * width_in_grid);
+          std::vector<int> x_index(length_in_grid * width_in_grid);
+          std::vector<int> y_index(length_in_grid * width_in_grid);
 
-        rclcpp::Time start_time_ = clock_->now();
+          rclcpp::Time start_time_ = clock_->now();
 
-        ///////////////////////////////////////////////////////////////
+          ///////////////////////////////////////////////////////////////
 
-        unsigned int point_in_obstacle_frame_index = 0;
-        for (int x_i = 0; x_i < length_in_grid; x_i++) {
-          for (int y_i = 0; y_i < width_in_grid; y_i++, point_in_obstacle_frame_index++) {
+          unsigned int point_in_obstacle_frame_index = 0;
+          for (int x_i = 0; x_i < length_in_grid; x_i++) {
+            for (int y_i = 0; y_i < width_in_grid; y_i++, point_in_obstacle_frame_index++) {
 
-            double dx = -length / 2 + x_i * resolution_;
-            double dy = -width / 2 + y_i * resolution_;
+              double dx = -length / 2 + x_i * resolution_;
+              double dy = -width / 2 + y_i * resolution_;
 
-            xs(x_i, y_i) = mean(0) + dx;
-            ys(x_i, y_i) = mean(1) + dy;
-            points_in_obstacle_frame[point_in_obstacle_frame_index].header.stamp =
-              obstacle_array->header.stamp;
-            points_in_obstacle_frame[point_in_obstacle_frame_index].header.frame_id =
-              obstacle_array->header.frame_id;
-            points_in_obstacle_frame[point_in_obstacle_frame_index].point.x =
-              obstacle_array->obstacles[i].position.x + dx;
-            points_in_obstacle_frame[point_in_obstacle_frame_index].point.y =
-              obstacle_array->obstacles[i].position.y + dy;
-            points_in_obstacle_frame[point_in_obstacle_frame_index].point.z = 0;
-            x_index[point_in_obstacle_frame_index] = x_i;
-            y_index[point_in_obstacle_frame_index] = y_i;
-          }
-        }
-
-        Eigen::MatrixXd probabilities = getProbabilityBatch(
-          mean, inv_covariance,
-          sqrt_2_pi_det_covariance, xs, ys);
-
-        bool batch_transform_success = batchTransform2DPoints(
-          x_x, x_y, y_x, y_y, dx, dy,
-          points_in_obstacle_frame,
-          points_in_global_frame, global_frame_,
-          transform_tolerance_);
-
-        if (batch_transform_success) {
-          for (size_t i = 0; i < points_in_global_frame.size(); i++) {
-            unsigned int mx, my;
-
-            if (worldToMap(
-                points_in_global_frame[i].point.x, points_in_global_frame[i].point.y, mx,
-                my))
-            {
-              unsigned int index = getIndex(mx, my);
-              uint8_t current_cost = costmap_[index];
-              costmap_[index] =
-                std::max(
-                current_cost,
-                uint8_t(
-                  LETHAL_OBSTACLE *
-                  probabilities(x_index[i], y_index[i]) * sqrt_2_pi_det_covariance_0));
+              xs(x_i, y_i) = mean(0) + dx;
+              ys(x_i, y_i) = mean(1) + dy;
+              points_in_obstacle_frame[point_in_obstacle_frame_index].header.stamp =
+                obstacle_array->header.stamp;
+              points_in_obstacle_frame[point_in_obstacle_frame_index].header.frame_id =
+                obstacle_array->header.frame_id;
+              points_in_obstacle_frame[point_in_obstacle_frame_index].point.x =
+                obstacle_array->obstacles[i].position.x + dx;
+              points_in_obstacle_frame[point_in_obstacle_frame_index].point.y =
+                obstacle_array->obstacles[i].position.y + dy;
+              points_in_obstacle_frame[point_in_obstacle_frame_index].point.z = 0;
+              x_index[point_in_obstacle_frame_index] = x_i;
+              y_index[point_in_obstacle_frame_index] = y_i;
             }
           }
-        }
+
+          Eigen::MatrixXd probabilities = getProbabilityBatch(
+            mean, inv_covariance,
+            sqrt_2_pi_det_covariance, xs, ys);
+
+          bool batch_transform_success = batchTransform2DPoints(
+            x_x, x_y, y_x, y_y, dx, dy,
+            points_in_obstacle_frame,
+            points_in_global_frame, global_frame_,
+            transform_tolerance_);
+
+          if (batch_transform_success) {
+            for (size_t i = 0; i < points_in_global_frame.size(); i++) {
+              unsigned int mx, my;
+
+              if (worldToMap(
+                  points_in_global_frame[i].point.x, points_in_global_frame[i].point.y, mx,
+                  my))
+              {
+                unsigned int index = getIndex(mx, my);
+                uint8_t current_cost = costmap_[index];
+                costmap_[index] =
+                  std::max(
+                  current_cost,
+                  uint8_t(
+                    LETHAL_OBSTACLE *
+                    probabilities(x_index[i], y_index[i]) * sqrt_2_pi_det_covariance_0));
+              }
+            }
+          }
 
         ////////////////////////////////////////////////////////
 
@@ -377,9 +365,10 @@ void RadarLayer::updateBounds(
 
         /////////////////////////////////////////////////////////////
 
-        rclcpp::Duration comp_time_ = clock_->now() - start_time_;
+          rclcpp::Duration comp_time_ = clock_->now() - start_time_;
 
-        RCLCPP_INFO(logger_, "Duration %f", comp_time_.seconds());
+          RCLCPP_INFO(logger_, "Duration %f", comp_time_.seconds());
+        }
       }
 
     }
