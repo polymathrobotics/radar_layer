@@ -240,8 +240,11 @@ void RadarLayer::updateBounds(
 
       double min_probability = 0.001;
 
-      int number_of_time_steps = 1.0;
+      int number_of_time_steps = 2.0;
       double sample_time = 1.0;
+
+      //Initial covariance scaling factor
+      double sqrt_2_pi_det_covariance_0 = sqrt(2 * M_PI * obstacle_array->obstacles[i].position_covariance.x * obstacle_array->obstacles[i].position_covariance.y);
 
       for (int k = 0; k < number_of_time_steps; ++k) {
 
@@ -251,11 +254,25 @@ void RadarLayer::updateBounds(
         inv_covariance(0, 0) = 1 / covariance(0, 0);
         inv_covariance(1, 1) = 1 / covariance(1, 1);
 
-        double length = 2 * sqrt(-2 * log(min_probability) * covariance(0, 0));
-        double width = 2 * sqrt(-2 * log(min_probability) * covariance(1, 1));
-        
-        int length_in_grid = int(length / resolution_);
-        int width_in_grid = int(width / resolution_);
+        double sqrt_2_pi_det_covariance = sqrt(2 * M_PI * covariance(0, 0) * covariance(1, 1));
+        double covariance_ratio = sqrt_2_pi_det_covariance_0/sqrt_2_pi_det_covariance;
+
+        int length_in_grid;
+        int width_in_grid;
+        double length;
+        double width;
+
+        if(covariance_ratio < min_probability){
+          length = 0;
+          width = 0;
+          length_in_grid = 0;
+          width_in_grid = 0;
+        }else{
+          length = 2 * sqrt(-2 * (log(min_probability) - log(covariance_ratio)) * covariance(0, 0));
+          width = 2 * sqrt(-2 * (log(min_probability) - log(covariance_ratio)) * covariance(1, 1));    
+          length_in_grid = int(length / resolution_);
+          width_in_grid = int(width / resolution_);
+        }
 
         Eigen::MatrixXd xs(length_in_grid, width_in_grid);
         Eigen::MatrixXd ys(length_in_grid, width_in_grid);
@@ -263,8 +280,6 @@ void RadarLayer::updateBounds(
         std::vector<geometry_msgs::msg::PointStamped> points_in_global_frame(length_in_grid * width_in_grid);
         std::vector<int> x_index(length_in_grid * width_in_grid);
         std::vector<int> y_index(length_in_grid * width_in_grid);
-
-        double sqrt_2_pi_det_covariance = sqrt(2 * M_PI * covariance(0, 0) * covariance(1, 1));
 
         rclcpp::Time start_time_ = clock_->now();
 
@@ -318,7 +333,7 @@ void RadarLayer::updateBounds(
                 current_cost,
                 uint8_t(
                   LETHAL_OBSTACLE *
-                  probabilities(x_index[i], y_index[i]) * sqrt_2_pi_det_covariance));
+                  probabilities(x_index[i], y_index[i]) * sqrt_2_pi_det_covariance_0));
             }
           }
         }
