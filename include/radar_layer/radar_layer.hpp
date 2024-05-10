@@ -198,6 +198,17 @@ public:
   void getTransformCoefficients(std::string source_frame, 
   std::string target_frame, double & dx, double & dy, double & x_x, double & x_y, double & y_x, double & y_y);
 
+  void populateGrid(double length,
+    double width,
+    int obstacle_index,
+    std::vector<geometry_msgs::msg::PointStamped> & points_in_obstacle_frame,
+    std::vector<geometry_msgs::msg::PointStamped> & points_in_global_frame,
+    Eigen::MatrixXd & xs,
+    Eigen::MatrixXd & ys,
+    std::vector<int> x_index,
+    std::vector<int> y_index,
+    nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr obstacle_array);
+
 private:
   /// @brief Used to store observations from radar sensors
   std::vector<std::shared_ptr<radar_msgs::msg::RadarTracks>>

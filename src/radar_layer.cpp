@@ -36,7 +36,7 @@ void RadarLayer::onInitialize()
   declareParameter("minimum_probability", rclcpp::ParameterValue(0.05));
   declareParameter("number_of_time_steps", rclcpp::ParameterValue(10));
   declareParameter("sample_time",rclcpp::ParameterValue(0.1));
-  declareParameter("stamp_footprint", rclcpp::ParameterValue(true));
+  declareParameter("stamp_footprint", rclcpp::ParameterValue(false));
 
   auto node = node_.lock();
 
@@ -282,6 +282,80 @@ rcl_interfaces::msg::SetParametersResult RadarLayer::dynamicParametersCallback(
   return result;
 }
 
+void RadarLayer::populateGrid(double length,
+    double width,
+    int obstacle_index,
+    std::vector<geometry_msgs::msg::PointStamped> & points_in_obstacle_frame,
+    std::vector<geometry_msgs::msg::PointStamped> & points_in_global_frame,
+    Eigen::MatrixXd & xs,
+    Eigen::MatrixXd & ys,
+    std::vector<int> x_index,
+    std::vector<int> y_index,
+    nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr obstacle_array){
+
+    int length_in_grid = int(length / resolution_);
+    int width_in_grid = int(width / resolution_);
+
+    unsigned int point_in_obstacle_frame_index = 0;
+    for (int x_i = 0; x_i < length_in_grid; x_i++) {
+      for (int y_i = 0; y_i < width_in_grid; y_i++, point_in_obstacle_frame_index++) {
+
+        double dx = -length / 2 + x_i * resolution_;
+        double dy = -width / 2 + y_i * resolution_;
+
+        xs(x_i, y_i) = obstacle_array->obstacles[obstacle_index].position.x + dx;
+        ys(x_i, y_i) = obstacle_array->obstacles[obstacle_index].position.y + dy;
+
+        points_in_obstacle_frame[point_in_obstacle_frame_index].header.stamp = obstacle_array->header.stamp;
+        points_in_obstacle_frame[point_in_obstacle_frame_index].header.frame_id = obstacle_array->header.frame_id;
+        points_in_obstacle_frame[point_in_obstacle_frame_index].point.x = obstacle_array->obstacles[obstacle_index].position.x + dx;
+        points_in_obstacle_frame[point_in_obstacle_frame_index].point.y = obstacle_array->obstacles[obstacle_index].position.y + dy;
+        points_in_obstacle_frame[point_in_obstacle_frame_index].point.z = 0;
+        x_index[point_in_obstacle_frame_index] = x_i;
+        y_index[point_in_obstacle_frame_index] = y_i;
+      }
+    }
+  }
+
+// void RadarLayer::populateGrid(int length_in_grid,
+//   int width_in_grid,
+//   double length,
+//   double width,
+//   int obstacle_index,
+//   std::vector<geometry_msgs::msg::PointStamped> & points_in_obstacle_frame,
+//   std::vector<geometry_msgs::msg::PointStamped> & points_in_global_frame,
+//   std::vector<geometry_msgs::msg::PointStamped> & xs,
+//   std::vector<geometry_msgs::msg::PointStamped> & ys,
+//   double & dx, double & dy, double & x_x, double & x_y, double & y_x, double & y_y,
+//   nav2_dynamic_msgs::msg::Obstacle::SharedPtr obstacle_array){
+
+    // unsigned int point_in_obstacle_frame_index = 0;
+    // for (int x_i = 0; x_i < length_in_grid; x_i++) {
+    //   for (int y_i = 0; y_i < width_in_grid; y_i++, point_in_obstacle_frame_index++) {
+
+    //     double dx = -length / 2 + x_i * resolution_;
+    //     double dy = -width / 2 + y_i * resolution_;
+
+    //     xs(x_i, y_i) = obstacle_array->obstacles[obstacle_index].position.x + dx;
+    //     ys(x_i, y_i) = obstacle_array->obstacles[obstacle_index].position.y + dy;
+
+    //     points_in_obstacle_frame[point_in_obstacle_frame_index].header.stamp = obstacle_array->header.stamp;
+    //     points_in_obstacle_frame[point_in_obstacle_frame_index].header.frame_id = obstacle_array->header.frame_id;
+    //     points_in_obstacle_frame[point_in_obstacle_frame_index].point.x = obstacle_array->obstacles[i].position.x + dx;
+    //     points_in_obstacle_frame[point_in_obstacle_frame_index].point.y = obstacle_array->obstacles[i].position.y + dy;
+    //     points_in_obstacle_frame[point_in_obstacle_frame_index].point.z = 0;
+    //     x_index[point_in_obstacle_frame_index] = x_i;
+    //     y_index[point_in_obstacle_frame_index] = y_i;
+    //   }
+    // }
+
+    // bool batch_transform_success = batchTransform2DPoints(
+    //   x_x, x_y, y_x, y_y, dx, dy,
+    //   points_in_obstacle_frame,
+    //   points_in_global_frame, global_frame_,
+    //   transform_tolerance_);
+// }
+
 void RadarLayer::stampFootprint(nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr obstacle_array, int number_of_objects){
 
   geometry_msgs::msg::PointStamped point_in_global_frame;
@@ -397,8 +471,6 @@ void RadarLayer::predictiveCost(nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr
             std::vector<int> x_index(length_in_grid * width_in_grid);
             std::vector<int> y_index(length_in_grid * width_in_grid);
 
-            rclcpp::Time start_time_ = clock_->now();
-
             unsigned int point_in_obstacle_frame_index = 0;
             for (int x_i = 0; x_i < length_in_grid; x_i++) {
               for (int y_i = 0; y_i < width_in_grid; y_i++, point_in_obstacle_frame_index++) {
@@ -408,29 +480,25 @@ void RadarLayer::predictiveCost(nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr
 
                 xs(x_i, y_i) = mean(0) + dx;
                 ys(x_i, y_i) = mean(1) + dy;
-                points_in_obstacle_frame[point_in_obstacle_frame_index].header.stamp =
-                  obstacle_array->header.stamp;
-                points_in_obstacle_frame[point_in_obstacle_frame_index].header.frame_id =
-                  obstacle_array->header.frame_id;
-                points_in_obstacle_frame[point_in_obstacle_frame_index].point.x =
-                  obstacle_array->obstacles[i].position.x + dx;
-                points_in_obstacle_frame[point_in_obstacle_frame_index].point.y =
-                  obstacle_array->obstacles[i].position.y + dy;
+                points_in_obstacle_frame[point_in_obstacle_frame_index].header.stamp = obstacle_array->header.stamp;
+                points_in_obstacle_frame[point_in_obstacle_frame_index].header.frame_id = obstacle_array->header.frame_id;
+                points_in_obstacle_frame[point_in_obstacle_frame_index].point.x = mean(0) + dx;
+                points_in_obstacle_frame[point_in_obstacle_frame_index].point.y = mean(1) + dy;
                 points_in_obstacle_frame[point_in_obstacle_frame_index].point.z = 0;
                 x_index[point_in_obstacle_frame_index] = x_i;
                 y_index[point_in_obstacle_frame_index] = y_i;
               }
             }
 
-            Eigen::MatrixXd probabilities = getProbabilityBatch(
-              mean, inv_covariance,
-              sqrt_2_pi_det_covariance, xs, ys);
-
             bool batch_transform_success = batchTransform2DPoints(
               x_x, x_y, y_x, y_y, dx, dy,
               points_in_obstacle_frame,
               points_in_global_frame, global_frame_,
               transform_tolerance_);
+
+            Eigen::MatrixXd probabilities = getProbabilityBatch(
+              mean, inv_covariance,
+              sqrt_2_pi_det_covariance, xs, ys);
 
             if (batch_transform_success) {
               for (size_t i = 0; i < points_in_global_frame.size(); i++) {
@@ -451,8 +519,6 @@ void RadarLayer::predictiveCost(nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr
                 }
               }
             }
-
-            rclcpp::Duration comp_time_ = clock_->now() - start_time_;
           }
         }
       }
@@ -828,7 +894,7 @@ Eigen::VectorXd RadarLayer::projectMean(
 
   position(0) = obstacle.position.x;
   position(1) = obstacle.position.y;
-  velocity(0) = obstacle.velocity.x;
+  velocity(0) = 1.0; //obstacle.velocity.x;
   velocity(1) = obstacle.velocity.y;
 
   position_projected = position + time_steps * sample_time * velocity;
