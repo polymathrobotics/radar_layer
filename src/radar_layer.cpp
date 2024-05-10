@@ -238,7 +238,7 @@ void RadarLayer::updateBounds(
 
     for (size_t i = 0; i < number_of_objects; i++) {
 
-      double min_probability = 0.001;
+      double min_probability = 0.002;
 
       int number_of_time_steps = 10.0;
       double sample_time = 1.0;
@@ -256,6 +256,7 @@ void RadarLayer::updateBounds(
 
         double sqrt_2_pi_det_covariance = sqrt(2 * M_PI * covariance(0, 0) * covariance(1, 1));
         double covariance_ratio = sqrt_2_pi_det_covariance_0/sqrt_2_pi_det_covariance;
+        RCLCPP_INFO(logger_, "ratio: %f", covariance_ratio);
 
         int length_in_grid;
         int width_in_grid;
