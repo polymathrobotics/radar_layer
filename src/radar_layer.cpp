@@ -34,7 +34,7 @@ void RadarLayer::onInitialize()
   declareParameter("combination_method", rclcpp::ParameterValue(1));
   declareParameter("observation_sources",rclcpp::ParameterValue(std::string("")));
   declareParameter("minimum_probability", rclcpp::ParameterValue(0.05));
-  declareParameter("number_of_time_steps", rclcpp::ParameterValue(1.0));
+  declareParameter("number_of_time_steps", rclcpp::ParameterValue(1));
   declareParameter("sample_time",rclcpp::ParameterValue(0.1));
 
   auto node = node_.lock();
@@ -206,12 +206,8 @@ void RadarLayer::updateBounds(
     double y_y;
 
     if (number_of_objects > 0) {
-
       getTransformCoefficients(obstacle_array->header.frame_id, global_frame_, dx, dy, x_x, x_y, y_x, y_y);
     }
-
-    
-    RCLCPP_INFO(logger_, "number_of_time_steps_ %i", number_of_time_steps_);
     
     for (size_t i = 0; i < number_of_objects; i++) {
 
