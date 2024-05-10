@@ -285,7 +285,16 @@ rcl_interfaces::msg::SetParametersResult RadarLayer::dynamicParametersCallback(
 void RadarLayer::stampFootprint(nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr obstacle_array, int number_of_objects){
 
   geometry_msgs::msg::PointStamped point_in_global_frame;
-  
+  geometry_msgs::msg::TransformStamped radar_to_global_transform;
+  double dx;
+  double dy;
+  double x_x;
+  double x_y;
+  double y_x;
+  double y_y;
+
+  getTransformCoefficients(obstacle_array->header.frame_id, global_frame_, dx, dy, x_x, x_y, y_x, y_y);
+
   for (size_t i = 0; i < number_of_objects; i++) {
       double length = obstacle_array->obstacles[i].size.x;
       double width = obstacle_array->obstacles[i].size.y;
@@ -293,32 +302,80 @@ void RadarLayer::stampFootprint(nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr
       int length_in_grid = int(length / resolution_);
       int width_in_grid = int(width / resolution_);
 
+      Eigen::MatrixXd xs(length_in_grid, width_in_grid);
+      Eigen::MatrixXd ys(length_in_grid, width_in_grid);
+      std::vector<geometry_msgs::msg::PointStamped> points_in_obstacle_frame(length_in_grid * width_in_grid);
+      std::vector<geometry_msgs::msg::PointStamped> points_in_global_frame(length_in_grid * width_in_grid);
+      std::vector<int> x_index(length_in_grid * width_in_grid);
+      std::vector<int> y_index(length_in_grid * width_in_grid);
 
+      rclcpp::Time start_time_ = clock_->now();
+
+      unsigned int point_in_obstacle_frame_index = 0;
       for (int x_i = 0; x_i < length_in_grid; x_i++) {
-        for (int y_i = 0; y_i < width_in_grid; y_i++) {
-          transformPoint(
-            obstacle_array->header,
-            obstacle_array->obstacles[i],
-            point_in_global_frame,
-            -length / 2 + x_i * resolution_,
-            -width / 2 + y_i * resolution_);
+        for (int y_i = 0; y_i < width_in_grid; y_i++, point_in_obstacle_frame_index++) {
 
-          double px = point_in_global_frame.point.x;
-          double py = point_in_global_frame.point.y;
+          double dx = -length / 2 + x_i * resolution_;
+          double dy = -width / 2 + y_i * resolution_;
 
-          // now we need to compute the map coordinates for the observation
-          unsigned int mx, my;
+          xs(x_i, y_i) = obstacle_array->obstacles[i].position.x + dx;
+          ys(x_i, y_i) = obstacle_array->obstacles[i].position.y + dy;
 
-          if (!worldToMap(px, py, mx, my)) {
-            continue;
-          }
-          unsigned int index = getIndex(mx, my);
-          costmap_[index] = LETHAL_OBSTACLE;
+          points_in_obstacle_frame[point_in_obstacle_frame_index].header.stamp =
+            obstacle_array->header.stamp;
+          points_in_obstacle_frame[point_in_obstacle_frame_index].header.frame_id =
+            obstacle_array->header.frame_id;
+          points_in_obstacle_frame[point_in_obstacle_frame_index].point.x =
+            obstacle_array->obstacles[i].position.x + dx;
+          points_in_obstacle_frame[point_in_obstacle_frame_index].point.y =
+            obstacle_array->obstacles[i].position.y + dy;
+          points_in_obstacle_frame[point_in_obstacle_frame_index].point.z = 0;
+          x_index[point_in_obstacle_frame_index] = x_i;
+          y_index[point_in_obstacle_frame_index] = y_i;
         }
       }
+
+      bool batch_transform_success = batchTransform2DPoints(
+        x_x, x_y, y_x, y_y, dx, dy,
+        points_in_obstacle_frame,
+        points_in_global_frame, global_frame_,
+        transform_tolerance_);
+
+      if (batch_transform_success) {
+        for (size_t i = 0; i < points_in_global_frame.size(); i++) {
+          unsigned int mx, my;
+
+          if (worldToMap(points_in_global_frame[i].point.x, points_in_global_frame[i].point.y, mx,my)){
+            unsigned int index = getIndex(mx, my);
+            costmap_[index] = LETHAL_OBSTACLE;
+          }
+        }
+      }
+
+
+      // for (int x_i = 0; x_i < length_in_grid; x_i++) {
+      //   for (int y_i = 0; y_i < width_in_grid; y_i++) {
+      //     transformPoint(
+      //       obstacle_array->header,
+      //       obstacle_array->obstacles[i],
+      //       point_in_global_frame,
+      //       -length / 2 + x_i * resolution_,
+      //       -width / 2 + y_i * resolution_);
+
+      //     double px = point_in_global_frame.point.x;
+      //     double py = point_in_global_frame.point.y;
+
+      //     // now we need to compute the map coordinates for the observation
+      //     unsigned int mx, my;
+
+      //     if (!worldToMap(px, py, mx, my)) {
+      //       continue;
+      //     }
+      //     unsigned int index = getIndex(mx, my);
+      //     costmap_[index] = LETHAL_OBSTACLE;
+      //   }
+      // }
     }
-
-
 }
 
 void RadarLayer::predictiveCost(nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr obstacle_array, int number_of_objects){
