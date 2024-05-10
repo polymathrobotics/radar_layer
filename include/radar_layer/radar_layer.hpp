@@ -193,6 +193,7 @@ public:
   const;
 
   void predictiveCost(nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr obstacle_array, int number_of_objects);
+  void stampFootprint(nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr obstacle_array, int number_of_objects);
 
   void getTransformCoefficients(std::string source_frame, 
   std::string target_frame, double & dx, double & dy, double & x_x, double & x_y, double & y_x, double & y_y);
@@ -223,6 +224,7 @@ private:
     dyn_params_handler_;
 
   bool rolling_window_;
+  bool stamp_footprint_;
   int combination_method_;
   double min_bound;
   double max_bound;
