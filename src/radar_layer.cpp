@@ -210,6 +210,9 @@ void RadarLayer::updateBounds(
       getTransformCoefficients(obstacle_array->header.frame_id, global_frame_, dx, dy, x_x, x_y, y_x, y_y);
     }
 
+    
+    RCLCPP_INFO(logger_, "number_of_time_steps_ %i", number_of_time_steps_);
+    
     for (size_t i = 0; i < number_of_objects; i++) {
 
       double sqrt_2_pi_det_covariance_0 = sqrt(2 * M_PI * obstacle_array->obstacles[i].position_covariance.x * obstacle_array->obstacles[i].position_covariance.y);
