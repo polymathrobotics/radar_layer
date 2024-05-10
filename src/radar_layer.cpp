@@ -335,14 +335,14 @@ void RadarLayer::stampFootprint(nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr
         }
       }
 
-      // bool batch_transform_success = batchTransform2DPoints(
-      //   x_x, x_y, y_x, y_y, dx, dy,
-      //   points_in_obstacle_frame,
-      //   points_in_global_frame, global_frame_,
-      //   transform_tolerance_);
-
-      bool batch_transform_success = batchTransformPoints(points_in_obstacle_frame, points_in_global_frame, global_frame_,
+      bool batch_transform_success = batchTransform2DPoints(
+        x_x, x_y, y_x, y_y, dx, dy,
+        points_in_obstacle_frame,
+        points_in_global_frame, global_frame_,
         transform_tolerance_);
+
+      // bool batch_transform_success = batchTransformPoints(points_in_obstacle_frame, points_in_global_frame, global_frame_,
+      //   transform_tolerance_);
 
       if (batch_transform_success) {
         for (size_t i = 0; i < points_in_global_frame.size(); i++) {
@@ -785,8 +785,8 @@ bool RadarLayer::batchTransform2DPoints(
   for (size_t i = 0; i < input_points.size(); i++) {
     output_points[i].header.stamp = input_points[i].header.stamp;
     output_points[i].header.frame_id = target_frame;
-    output_points[i].point.x = input_points[i].point.x * x_x + input_points[i].point.y * x_y - dx;
-    output_points[i].point.y = input_points[i].point.x * y_x + input_points[i].point.y * y_y - dy;
+    output_points[i].point.x = input_points[i].point.x * x_x + input_points[i].point.y * y_x - dx;
+    output_points[i].point.y = input_points[i].point.x * x_y + input_points[i].point.y * y_y - dy;
     output_points[i].point.z = 0;
   }
 
