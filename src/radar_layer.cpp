@@ -335,10 +335,13 @@ void RadarLayer::stampFootprint(nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr
         }
       }
 
-      bool batch_transform_success = batchTransform2DPoints(
-        x_x, x_y, y_x, y_y, dx, dy,
-        points_in_obstacle_frame,
-        points_in_global_frame, global_frame_,
+      // bool batch_transform_success = batchTransform2DPoints(
+      //   x_x, x_y, y_x, y_y, dx, dy,
+      //   points_in_obstacle_frame,
+      //   points_in_global_frame, global_frame_,
+      //   transform_tolerance_);
+
+      bool batch_transform_success = batchTransformPoints(points_in_obstacle_frame, points_in_global_frame, global_frame_,
         transform_tolerance_);
 
       if (batch_transform_success) {
@@ -778,36 +781,6 @@ bool RadarLayer::batchTransform2DPoints(
   const tf2::Duration & timeout) const
 {
   bool all_transformed = true;
-
-  // // Number of points
-  // size_t n = input_points.size();
-
-  // // Create matrices for input and output coordinates
-  // Eigen::MatrixXd input_coords(3, n);  // Using a homogeneous coordinate system for easy matrix multiplication
-  // Eigen::MatrixXd output_coords(3, n);
-
-  // // Fill input matrix
-  // for (size_t i = 0; i < n; ++i) {
-  //     input_coords(0, i) = input_points[i].point.x;
-  //     input_coords(1, i) = input_points[i].point.y;
-  //     input_coords(2, i) = 1;  // Homogeneous coordinate
-  // }
-
-  // // Transformation matrix
-  // Eigen::Matrix3d transform_matrix;
-  // transform_matrix << x_x, x_y, -dx,
-  //                     y_x, y_y, -dy,
-  //                     0,   0,   1;
-
-  // // Perform the matrix multiplication
-  // output_coords = transform_matrix * input_coords;
-
-  // // Assign results back to output_points
-  // for (size_t i = 0; i < n; ++i) {
-  //     output_points[i].point.x = output_coords(0, i);
-  //     output_points[i].point.y = output_coords(1, i);
-  //     output_points[i].point.z = 0;  // Setting z to zero as specified
-  // }
 
   for (size_t i = 0; i < input_points.size(); i++) {
     output_points[i].header.stamp = input_points[i].header.stamp;
