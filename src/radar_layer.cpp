@@ -240,7 +240,7 @@ void RadarLayer::updateBounds(
 
       double min_probability = 0.001;
 
-      int number_of_time_steps = 2.0;
+      int number_of_time_steps = 10.0;
       double sample_time = 1.0;
 
       //Initial covariance scaling factor
