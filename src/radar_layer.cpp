@@ -271,6 +271,8 @@ void RadarLayer::updateBounds(
         }else{
           length = 2 * sqrt(-2 * (log(min_probability) - log(covariance_ratio)) * covariance(0, 0));
           width = 2 * sqrt(-2 * (log(min_probability) - log(covariance_ratio)) * covariance(1, 1));    
+          RCLCPP_INFO(logger_, "length: %f", length);
+          RCLCPP_INFO(logger_, "width: %f", width);
           length_in_grid = int(length / resolution_);
           width_in_grid = int(width / resolution_);
         }
