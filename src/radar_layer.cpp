@@ -36,7 +36,7 @@ void RadarLayer::onInitialize()
   declareParameter("minimum_probability", rclcpp::ParameterValue(0.05));
   declareParameter("number_of_time_steps", rclcpp::ParameterValue(1));
   declareParameter("sample_time",rclcpp::ParameterValue(0.1));
-  declareParameter("stamp_footprint", rclcpp::ParameterValue(true));
+  declareParameter("stamp_footprint", rclcpp::ParameterValue(false));
 
   auto node = node_.lock();
 
@@ -341,9 +341,6 @@ void RadarLayer::stampFootprint(nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr
         points_in_global_frame, global_frame_,
         transform_tolerance_);
 
-      // bool batch_transform_success = batchTransformPoints(points_in_obstacle_frame, points_in_global_frame, global_frame_,
-      //   transform_tolerance_);
-
       if (batch_transform_success) {
         for (size_t i = 0; i < points_in_global_frame.size(); i++) {
           unsigned int mx, my;
@@ -354,30 +351,6 @@ void RadarLayer::stampFootprint(nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr
           }
         }
       }
-
-
-      // for (int x_i = 0; x_i < length_in_grid; x_i++) {
-      //   for (int y_i = 0; y_i < width_in_grid; y_i++) {
-      //     transformPoint(
-      //       obstacle_array->header,
-      //       obstacle_array->obstacles[i],
-      //       point_in_global_frame,
-      //       -length / 2 + x_i * resolution_,
-      //       -width / 2 + y_i * resolution_);
-
-      //     double px = point_in_global_frame.point.x;
-      //     double py = point_in_global_frame.point.y;
-
-      //     // now we need to compute the map coordinates for the observation
-      //     unsigned int mx, my;
-
-      //     if (!worldToMap(px, py, mx, my)) {
-      //       continue;
-      //     }
-      //     unsigned int index = getIndex(mx, my);
-      //     costmap_[index] = LETHAL_OBSTACLE;
-      //   }
-      // }
     }
 }
 
@@ -391,7 +364,7 @@ void RadarLayer::predictiveCost(nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr
       double y_x;
       double y_y;
 
-      getTransformCoefficients(obstacle_array->header.frame_id, global_frame_, dx, dy, x_x, x_y, y_x, y_y);
+      getTransformCoefficients(global_frame_, obstacle_array->header.frame_id, dx, dy, x_x, x_y, y_x, y_y);
 
       for (size_t i = 0; i < number_of_objects; i++) {
 
@@ -479,8 +452,6 @@ void RadarLayer::predictiveCost(nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr
             }
 
             rclcpp::Duration comp_time_ = clock_->now() - start_time_;
-
-            RCLCPP_INFO(logger_, "Duration %f", comp_time_.seconds());
           }
         }
       }
