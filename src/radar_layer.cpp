@@ -523,7 +523,11 @@ void RadarLayer::obstacleCallback(
   const std::shared_ptr<nav2_dynamic_msgs::msg::ObstacleArray> & obstacle_buffer)
 {
   *detection_buffer = *message;
-  findUuid(obstacle_buffer, detection_buffer);
+  if(stamp_footprint_){
+    *obstacle_buffer = *detection_buffer
+  }else{
+    findUuid(obstacle_buffer, detection_buffer);
+  }
 }
 
 void RadarLayer::findUuid(
