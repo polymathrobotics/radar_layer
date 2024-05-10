@@ -33,7 +33,7 @@ void RadarLayer::onInitialize()
   declareParameter("enabled", rclcpp::ParameterValue(true));
   declareParameter("combination_method", rclcpp::ParameterValue(1));
   declareParameter("observation_sources",rclcpp::ParameterValue(std::string("")));
-  declareParameter("minimum_probability", rclcpp::ParameterValue(0.05));
+  declareParameter("minimum_probability", rclcpp::ParameterValue(0.01));
   declareParameter("number_of_time_steps", rclcpp::ParameterValue(10));
   declareParameter("sample_time",rclcpp::ParameterValue(0.1));
   declareParameter("stamp_footprint", rclcpp::ParameterValue(false));
