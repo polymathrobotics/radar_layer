@@ -293,7 +293,7 @@ void RadarLayer::stampFootprint(nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr
   double y_x;
   double y_y;
 
-  getTransformCoefficients(obstacle_array->header.frame_id, global_frame_, dx, dy, x_x, x_y, y_x, y_y);
+  getTransformCoefficients(global_frame_, obstacle_array->header.frame_id, dx, dy, x_x, x_y, y_x, y_y);
 
   for (size_t i = 0; i < number_of_objects; i++) {
       double length = obstacle_array->obstacles[i].size.x;
@@ -785,8 +785,8 @@ bool RadarLayer::batchTransform2DPoints(
   for (size_t i = 0; i < input_points.size(); i++) {
     output_points[i].header.stamp = input_points[i].header.stamp;
     output_points[i].header.frame_id = target_frame;
-    output_points[i].point.x = input_points[i].point.x * x_x + input_points[i].point.y * y_x - dx;
-    output_points[i].point.y = input_points[i].point.x * x_y + input_points[i].point.y * y_y - dy;
+    output_points[i].point.x = input_points[i].point.x * x_x + input_points[i].point.y * y_x + dx;
+    output_points[i].point.y = input_points[i].point.x * x_y + input_points[i].point.y * y_y + dy;
     output_points[i].point.z = 0;
   }
 
