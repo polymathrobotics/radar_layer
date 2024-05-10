@@ -192,6 +192,9 @@ public:
     double dy)
   const;
 
+  void getTransformCoefficients(std::string source_frame, 
+  std::string target_frame, double & dx, double & dy, double & x_x, double & x_y, double & y_x, double & y_y);
+
 private:
   /// @brief Used to store observations from radar sensors
   std::vector<std::shared_ptr<radar_msgs::msg::RadarTracks>>

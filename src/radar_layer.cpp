@@ -202,45 +202,48 @@ void RadarLayer::updateBounds(
     double y_y;
 
     if (number_of_objects > 0) {
-      radar_to_global_transform = tf_->lookupTransform(
-        obstacle_array->header.frame_id,
-        global_frame_,
-        clock_->now(), rclcpp::Duration::from_seconds(2.0));
 
-      tf2::Quaternion q(
-        radar_to_global_transform.transform.rotation.x,
-        radar_to_global_transform.transform.rotation.y,
-        radar_to_global_transform.transform.rotation.z,
-        radar_to_global_transform.transform.rotation.w);
+      getTransformCoefficients(obstacle_array->header.frame_id, global_frame_, dx, dy, x_x, x_y, y_x, y_y);
 
-      tf2::Matrix3x3 m(q);
-      double roll, pitch, yaw;
-      m.getRPY(roll, pitch, yaw);
+      // radar_to_global_transform = tf_->lookupTransform(
+      //   obstacle_array->header.frame_id,
+      //   global_frame_,
+      //   clock_->now(), rclcpp::Duration::from_seconds(2.0));
 
-      dx = radar_to_global_transform.transform.translation.x;
-      dy = radar_to_global_transform.transform.translation.y;
+      // tf2::Quaternion q(
+      //   radar_to_global_transform.transform.rotation.x,
+      //   radar_to_global_transform.transform.rotation.y,
+      //   radar_to_global_transform.transform.rotation.z,
+      //   radar_to_global_transform.transform.rotation.w);
 
-      const double cos_roll = std::cos(roll);
-      const double sin_roll = std::sin(roll);
+      // tf2::Matrix3x3 m(q);
+      // double roll, pitch, yaw;
+      // m.getRPY(roll, pitch, yaw);
 
-      const double cos_pitch = std::cos(pitch);
-      const double sin_pitch = std::sin(pitch);
+      // dx = radar_to_global_transform.transform.translation.x;
+      // dy = radar_to_global_transform.transform.translation.y;
 
-      const double cos_yaw = std::cos(yaw);
-      const double sin_yaw = std::sin(yaw);
+      // const double cos_roll = std::cos(roll);
+      // const double sin_roll = std::sin(roll);
 
-      x_x = cos_yaw * cos_pitch;
-      x_y = sin_yaw * cos_pitch;
+      // const double cos_pitch = std::cos(pitch);
+      // const double sin_pitch = std::sin(pitch);
 
-      y_x = cos_yaw * sin_pitch * sin_roll - sin_yaw * cos_roll;
-      y_y = sin_yaw * sin_pitch * sin_roll + cos_yaw * cos_roll;
+      // const double cos_yaw = std::cos(yaw);
+      // const double sin_yaw = std::sin(yaw);
+
+      // x_x = cos_yaw * cos_pitch;
+      // x_y = sin_yaw * cos_pitch;
+
+      // y_x = cos_yaw * sin_pitch * sin_roll - sin_yaw * cos_roll;
+      // y_y = sin_yaw * sin_pitch * sin_roll + cos_yaw * cos_roll;
     }
 
     for (size_t i = 0; i < number_of_objects; i++) {
 
       double min_probability = 0.05;
 
-      int number_of_time_steps = 10.0;
+      int number_of_time_steps = 1.0;
       double sample_time = 0.1;
 
       //Initial covariance scaling factor
@@ -447,6 +450,168 @@ rcl_interfaces::msg::SetParametersResult RadarLayer::dynamicParametersCallback(
 
   result.successful = true;
   return result;
+}
+
+// void Radarlayer::placeHolder(nav2_dynamic_msgs::msg::ObstacleArray obstacle_array){
+
+//     int number_of_objects = obstacle_array->obstacles.size();
+//     geometry_msgs::msg::TransformStamped radar_to_global_transform;
+
+//     double dx;
+//     double dy;
+//     double x_x;
+//     double x_y;
+//     double y_x;
+//     double y_y;
+
+//     if (number_of_objects > 0) {
+
+//       radar_to_global_transform = tf_->lookupTransform(
+//         obstacle_array->header.frame_id,
+//         global_frame_,
+//         clock_->now(), rclcpp::Duration::from_seconds(2.0));
+
+//       tf2::Quaternion q(
+//         radar_to_global_transform.transform.rotation.x,
+//         radar_to_global_transform.transform.rotation.y,
+//         radar_to_global_transform.transform.rotation.z,
+//         radar_to_global_transform.transform.rotation.w);
+
+//       tf2::Matrix3x3 m(q);
+//       double roll, pitch, yaw;
+//       m.getRPY(roll, pitch, yaw);
+
+//       dx = radar_to_global_transform.transform.translation.x;
+//       dy = radar_to_global_transform.transform.translation.y;
+
+//       const double cos_roll = std::cos(roll);
+//       const double sin_roll = std::sin(roll);
+
+//       const double cos_pitch = std::cos(pitch);
+//       const double sin_pitch = std::sin(pitch);
+
+//       const double cos_yaw = std::cos(yaw);
+//       const double sin_yaw = std::sin(yaw);
+
+//       x_x = cos_yaw * cos_pitch;
+//       x_y = sin_yaw * cos_pitch;
+
+//       y_x = cos_yaw * sin_pitch * sin_roll - sin_yaw * cos_roll;
+//       y_y = sin_yaw * sin_pitch * sin_roll + cos_yaw * cos_roll;
+
+//       for (size_t i = 0; i < number_of_objects; i++) {
+
+//         double min_probability = 0.05;
+
+//         int number_of_time_steps = 10.0;
+//         double sample_time = 0.1;
+
+//         //Initial covariance scaling factor
+//         double sqrt_2_pi_det_covariance_0 = sqrt(2 * M_PI * obstacle_array->obstacles[i].position_covariance.x * obstacle_array->obstacles[i].position_covariance.y);
+
+//         for (int k = 0; k < number_of_time_steps; ++k) {
+
+//           Eigen::VectorXd mean = projectMean(obstacle_array->obstacles[i], sample_time, k);
+//           Eigen::MatrixXd covariance = projectCovariance(obstacle_array->obstacles[i], sample_time, k);
+//           Eigen::MatrixXd inv_covariance = Eigen::MatrixXd::Zero(2, 2);
+//           inv_covariance(0, 0) = 1 / covariance(0, 0);
+//           inv_covariance(1, 1) = 1 / covariance(1, 1);
+
+//           double sqrt_2_pi_det_covariance = sqrt(2 * M_PI * covariance(0, 0) * covariance(1, 1));
+//           double covariance_ratio = sqrt_2_pi_det_covariance_0/sqrt_2_pi_det_covariance;
+
+//           if(covariance_ratio < min_probability){
+//             break;
+//           }else{
+//             double length = 2 * sqrt(-2 * (log(min_probability) - log(covariance_ratio)) * covariance(0, 0));
+//             double width = 2 * sqrt(-2 * (log(min_probability) - log(covariance_ratio)) * covariance(1, 1));    
+//             int length_in_grid = int(length / resolution_);
+//             int width_in_grid = int(width / resolution_);
+
+//             Eigen::MatrixXd xs(length_in_grid, width_in_grid);
+//             Eigen::MatrixXd ys(length_in_grid, width_in_grid);
+//             std::vector<geometry_msgs::msg::PointStamped> points_in_obstacle_frame(length_in_grid * width_in_grid);
+//             std::vector<geometry_msgs::msg::PointStamped> points_in_global_frame(length_in_grid * width_in_grid);
+//             std::vector<int> x_index(length_in_grid * width_in_grid);
+//             std::vector<int> y_index(length_in_grid * width_in_grid);
+
+//             unsigned int point_in_obstacle_frame_index = 0;
+//             for (int x_i = 0; x_i < length_in_grid; x_i++) {
+//               for (int y_i = 0; y_i < width_in_grid; y_i++, point_in_obstacle_frame_index++) {
+
+//                 double dx = -length / 2 + x_i * resolution_;
+//                 double dy = -width / 2 + y_i * resolution_;
+
+//                 xs(x_i, y_i) = mean(0) + dx;
+//                 ys(x_i, y_i) = mean(1) + dy;
+//                 points_in_obstacle_frame[point_in_obstacle_frame_index].header.stamp = obstacle_array->header.stamp;
+//                 points_in_obstacle_frame[point_in_obstacle_frame_index].header.frame_id = obstacle_array->header.frame_id;
+//                 points_in_obstacle_frame[point_in_obstacle_frame_index].point.x = obstacle_array->obstacles[i].position.x + dx;
+//                 points_in_obstacle_frame[point_in_obstacle_frame_index].point.y = obstacle_array->obstacles[i].position.y + dy;
+//                 points_in_obstacle_frame[point_in_obstacle_frame_index].point.z = 0;
+//                 x_index[point_in_obstacle_frame_index] = x_i;
+//                 y_index[point_in_obstacle_frame_index] = y_i;
+
+//               }
+//             }
+
+//             Eigen::MatrixXd probabilities = getProbabilityBatch(mean, inv_covariance, sqrt_2_pi_det_covariance, xs, ys);
+
+//             bool batch_transform_success = batchTransform2DPoints(x_x, x_y, y_x, y_y, dx, dy, points_in_obstacle_frame, points_in_global_frame, global_frame_, transform_tolerance_);
+
+//             if (batch_transform_success) {
+//               for (size_t i = 0; i < points_in_global_frame.size(); i++) {
+//                 unsigned int mx, my;
+
+//                 if (worldToMap(
+//                     points_in_global_frame[i].point.x, points_in_global_frame[i].point.y, mx,
+//                     my))
+//                 {
+//                   unsigned int index = getIndex(mx, my);
+//                   uint8_t current_cost = costmap_[index];
+//                   costmap_[index] = std::max(current_cost, uint8_t(LETHAL_OBSTACLE * probabilities(x_index[i], y_index[i]) * sqrt_2_pi_det_covariance_0));
+//                 }
+
+//               }
+//             }
+//           }
+//         }
+//       }
+//     }
+//   }
+
+void RadarLayer::getTransformCoefficients(std::string source_frame, 
+  std::string target_frame, double & dx, double & dy, double & x_x, double & x_y, double & y_x, double & y_y){
+    geometry_msgs::msg::TransformStamped transform;
+    transform = tf_->lookupTransform(source_frame, target_frame, clock_->now(), rclcpp::Duration::from_seconds(2.0));
+
+      tf2::Quaternion q(
+        transform.transform.rotation.x,
+        transform.transform.rotation.y,
+        transform.transform.rotation.z,
+        transform.transform.rotation.w);
+
+      tf2::Matrix3x3 m(q);
+      double roll, pitch, yaw;
+      m.getRPY(roll, pitch, yaw);
+
+      const double cos_roll = std::cos(roll);
+      const double sin_roll = std::sin(roll);
+
+      const double cos_pitch = std::cos(pitch);
+      const double sin_pitch = std::sin(pitch);
+
+      const double cos_yaw = std::cos(yaw);
+      const double sin_yaw = std::sin(yaw);
+
+      dx = transform.transform.translation.x;
+      dy = transform.transform.translation.y;
+
+      x_x = cos_yaw * cos_pitch;
+      x_y = sin_yaw * cos_pitch;
+
+      y_x = cos_yaw * sin_pitch * sin_roll - sin_yaw * cos_roll;
+      y_y = sin_yaw * sin_pitch * sin_roll + cos_yaw * cos_roll;
 }
 
 void RadarLayer::obstacleCallback(
