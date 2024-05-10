@@ -524,7 +524,7 @@ void RadarLayer::obstacleCallback(
 {
   *detection_buffer = *message;
   if(stamp_footprint_){
-    *obstacle_buffer = *detection_buffer
+    *obstacle_buffer = *detection_buffer;
   }else{
     findUuid(obstacle_buffer, detection_buffer);
   }
