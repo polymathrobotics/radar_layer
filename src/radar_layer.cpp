@@ -206,138 +206,138 @@ void RadarLayer::updateBounds(
     double y_y;
 
     if (number_of_objects > 0) {
+
       getTransformCoefficients(obstacle_array->header.frame_id, global_frame_, dx, dy, x_x, x_y, y_x, y_y);
-    }
-    
-    for (size_t i = 0; i < number_of_objects; i++) {
+      
+      for (size_t i = 0; i < number_of_objects; i++) {
 
-      double sqrt_2_pi_det_covariance_0 = sqrt(2 * M_PI * obstacle_array->obstacles[i].position_covariance.x * obstacle_array->obstacles[i].position_covariance.y);
+        double sqrt_2_pi_det_covariance_0 = sqrt(2 * M_PI * obstacle_array->obstacles[i].position_covariance.x * obstacle_array->obstacles[i].position_covariance.y);
 
-      for (int k = 0; k < number_of_time_steps_; ++k) {
+        for (int k = 0; k < number_of_time_steps_; ++k) {
 
-        Eigen::VectorXd mean = projectMean(obstacle_array->obstacles[i], sample_time_, k);
-        Eigen::MatrixXd covariance = projectCovariance(obstacle_array->obstacles[i], sample_time_, k);
-        Eigen::MatrixXd inv_covariance = Eigen::MatrixXd::Zero(2, 2);
-        inv_covariance(0, 0) = 1 / covariance(0, 0);
-        inv_covariance(1, 1) = 1 / covariance(1, 1);
+          Eigen::VectorXd mean = projectMean(obstacle_array->obstacles[i], sample_time_, k);
+          Eigen::MatrixXd covariance = projectCovariance(obstacle_array->obstacles[i], sample_time_, k);
+          Eigen::MatrixXd inv_covariance = Eigen::MatrixXd::Zero(2, 2);
+          inv_covariance(0, 0) = 1 / covariance(0, 0);
+          inv_covariance(1, 1) = 1 / covariance(1, 1);
 
-        double sqrt_2_pi_det_covariance = sqrt(2 * M_PI * covariance(0, 0) * covariance(1, 1));
-        double covariance_ratio = sqrt_2_pi_det_covariance_0/sqrt_2_pi_det_covariance;
+          double sqrt_2_pi_det_covariance = sqrt(2 * M_PI * covariance(0, 0) * covariance(1, 1));
+          double covariance_ratio = sqrt_2_pi_det_covariance_0/sqrt_2_pi_det_covariance;
 
-        if(covariance_ratio < min_probability_){
-          break;
-        }else{
-          double length = 2 * sqrt(-2 * (log(min_probability_) - log(covariance_ratio)) * covariance(0, 0));
-          double width = 2 * sqrt(-2 * (log(min_probability_) - log(covariance_ratio)) * covariance(1, 1));    
-          int length_in_grid = int(length / resolution_);
-          int width_in_grid = int(width / resolution_);
+          if(covariance_ratio < min_probability_){
+            break;
+          }else{
+            double length = 2 * sqrt(-2 * (log(min_probability_) - log(covariance_ratio)) * covariance(0, 0));
+            double width = 2 * sqrt(-2 * (log(min_probability_) - log(covariance_ratio)) * covariance(1, 1));    
+            int length_in_grid = int(length / resolution_);
+            int width_in_grid = int(width / resolution_);
 
-          Eigen::MatrixXd xs(length_in_grid, width_in_grid);
-          Eigen::MatrixXd ys(length_in_grid, width_in_grid);
-          std::vector<geometry_msgs::msg::PointStamped> points_in_obstacle_frame(length_in_grid * width_in_grid);
-          std::vector<geometry_msgs::msg::PointStamped> points_in_global_frame(length_in_grid * width_in_grid);
-          std::vector<int> x_index(length_in_grid * width_in_grid);
-          std::vector<int> y_index(length_in_grid * width_in_grid);
+            Eigen::MatrixXd xs(length_in_grid, width_in_grid);
+            Eigen::MatrixXd ys(length_in_grid, width_in_grid);
+            std::vector<geometry_msgs::msg::PointStamped> points_in_obstacle_frame(length_in_grid * width_in_grid);
+            std::vector<geometry_msgs::msg::PointStamped> points_in_global_frame(length_in_grid * width_in_grid);
+            std::vector<int> x_index(length_in_grid * width_in_grid);
+            std::vector<int> y_index(length_in_grid * width_in_grid);
 
-          rclcpp::Time start_time_ = clock_->now();
+            rclcpp::Time start_time_ = clock_->now();
 
-          ///////////////////////////////////////////////////////////////
+            ///////////////////////////////////////////////////////////////
 
-          unsigned int point_in_obstacle_frame_index = 0;
-          for (int x_i = 0; x_i < length_in_grid; x_i++) {
-            for (int y_i = 0; y_i < width_in_grid; y_i++, point_in_obstacle_frame_index++) {
+            unsigned int point_in_obstacle_frame_index = 0;
+            for (int x_i = 0; x_i < length_in_grid; x_i++) {
+              for (int y_i = 0; y_i < width_in_grid; y_i++, point_in_obstacle_frame_index++) {
 
-              double dx = -length / 2 + x_i * resolution_;
-              double dy = -width / 2 + y_i * resolution_;
+                double dx = -length / 2 + x_i * resolution_;
+                double dy = -width / 2 + y_i * resolution_;
 
-              xs(x_i, y_i) = mean(0) + dx;
-              ys(x_i, y_i) = mean(1) + dy;
-              points_in_obstacle_frame[point_in_obstacle_frame_index].header.stamp =
-                obstacle_array->header.stamp;
-              points_in_obstacle_frame[point_in_obstacle_frame_index].header.frame_id =
-                obstacle_array->header.frame_id;
-              points_in_obstacle_frame[point_in_obstacle_frame_index].point.x =
-                obstacle_array->obstacles[i].position.x + dx;
-              points_in_obstacle_frame[point_in_obstacle_frame_index].point.y =
-                obstacle_array->obstacles[i].position.y + dy;
-              points_in_obstacle_frame[point_in_obstacle_frame_index].point.z = 0;
-              x_index[point_in_obstacle_frame_index] = x_i;
-              y_index[point_in_obstacle_frame_index] = y_i;
-            }
-          }
-
-          Eigen::MatrixXd probabilities = getProbabilityBatch(
-            mean, inv_covariance,
-            sqrt_2_pi_det_covariance, xs, ys);
-
-          bool batch_transform_success = batchTransform2DPoints(
-            x_x, x_y, y_x, y_y, dx, dy,
-            points_in_obstacle_frame,
-            points_in_global_frame, global_frame_,
-            transform_tolerance_);
-
-          if (batch_transform_success) {
-            for (size_t i = 0; i < points_in_global_frame.size(); i++) {
-              unsigned int mx, my;
-
-              if (worldToMap(
-                  points_in_global_frame[i].point.x, points_in_global_frame[i].point.y, mx,
-                  my))
-              {
-                unsigned int index = getIndex(mx, my);
-                uint8_t current_cost = costmap_[index];
-                costmap_[index] =
-                  std::max(
-                  current_cost,
-                  uint8_t(
-                    LETHAL_OBSTACLE *
-                    probabilities(x_index[i], y_index[i]) * sqrt_2_pi_det_covariance_0));
+                xs(x_i, y_i) = mean(0) + dx;
+                ys(x_i, y_i) = mean(1) + dy;
+                points_in_obstacle_frame[point_in_obstacle_frame_index].header.stamp =
+                  obstacle_array->header.stamp;
+                points_in_obstacle_frame[point_in_obstacle_frame_index].header.frame_id =
+                  obstacle_array->header.frame_id;
+                points_in_obstacle_frame[point_in_obstacle_frame_index].point.x =
+                  obstacle_array->obstacles[i].position.x + dx;
+                points_in_obstacle_frame[point_in_obstacle_frame_index].point.y =
+                  obstacle_array->obstacles[i].position.y + dy;
+                points_in_obstacle_frame[point_in_obstacle_frame_index].point.z = 0;
+                x_index[point_in_obstacle_frame_index] = x_i;
+                y_index[point_in_obstacle_frame_index] = y_i;
               }
             }
+
+            Eigen::MatrixXd probabilities = getProbabilityBatch(
+              mean, inv_covariance,
+              sqrt_2_pi_det_covariance, xs, ys);
+
+            bool batch_transform_success = batchTransform2DPoints(
+              x_x, x_y, y_x, y_y, dx, dy,
+              points_in_obstacle_frame,
+              points_in_global_frame, global_frame_,
+              transform_tolerance_);
+
+            if (batch_transform_success) {
+              for (size_t i = 0; i < points_in_global_frame.size(); i++) {
+                unsigned int mx, my;
+
+                if (worldToMap(
+                    points_in_global_frame[i].point.x, points_in_global_frame[i].point.y, mx,
+                    my))
+                {
+                  unsigned int index = getIndex(mx, my);
+                  uint8_t current_cost = costmap_[index];
+                  costmap_[index] =
+                    std::max(
+                    current_cost,
+                    uint8_t(
+                      LETHAL_OBSTACLE *
+                      probabilities(x_index[i], y_index[i]) * sqrt_2_pi_det_covariance_0));
+                }
+              }
+            }
+
+          ////////////////////////////////////////////////////////
+
+          // for (int x_i = 0; x_i < length_in_grid; x_i++) {
+          //   for (int y_i = 0; y_i < width_in_grid; y_i++) {
+
+          //     point_in_radar_frame.point.x = mean(0) - length / 2 + x_i * resolution_;
+          //     point_in_radar_frame.point.y = mean(1) - width / 2 + y_i * resolution_;
+          //     double probability = getProbabilty(mean, inv_covariance, sqrt_2_pi_det_covariance, point_in_radar_frame.point.x, point_in_radar_frame.point.y);
+
+          //     transformPoint(
+          //       obstacle_array->header,
+          //       obstacle_array->obstacles[i],
+          //       point_in_global_frame,
+          //       -length / 2 + x_i * resolution_,
+          //       -width / 2 + y_i * resolution_);
+
+          //     double px = point_in_global_frame.point.x;
+          //     double py = point_in_global_frame.point.y;
+
+          //     // now we need to compute the map coordinates for the observation
+          //     unsigned int mx, my;
+
+          //     if (!worldToMap(px, py, mx, my)) {
+          //       continue;
+          //     }
+
+          //     unsigned int index = getIndex(mx, my);
+          //     uint8_t current_cost = costmap_[index];
+          //     // RCLCPP_INFO(logger_, "cost: %f", current_cost);
+          //     costmap_[index] = std::max(current_cost, uint8_t(LETHAL_OBSTACLE * probability * sqrt_2_pi_det_covariance));
+
+          //   }
+          // }
+
+          /////////////////////////////////////////////////////////////
+
+            rclcpp::Duration comp_time_ = clock_->now() - start_time_;
+
+            RCLCPP_INFO(logger_, "Duration %f", comp_time_.seconds());
           }
-
-        ////////////////////////////////////////////////////////
-
-        // for (int x_i = 0; x_i < length_in_grid; x_i++) {
-        //   for (int y_i = 0; y_i < width_in_grid; y_i++) {
-
-        //     point_in_radar_frame.point.x = mean(0) - length / 2 + x_i * resolution_;
-        //     point_in_radar_frame.point.y = mean(1) - width / 2 + y_i * resolution_;
-        //     double probability = getProbabilty(mean, inv_covariance, sqrt_2_pi_det_covariance, point_in_radar_frame.point.x, point_in_radar_frame.point.y);
-
-        //     transformPoint(
-        //       obstacle_array->header,
-        //       obstacle_array->obstacles[i],
-        //       point_in_global_frame,
-        //       -length / 2 + x_i * resolution_,
-        //       -width / 2 + y_i * resolution_);
-
-        //     double px = point_in_global_frame.point.x;
-        //     double py = point_in_global_frame.point.y;
-
-        //     // now we need to compute the map coordinates for the observation
-        //     unsigned int mx, my;
-
-        //     if (!worldToMap(px, py, mx, my)) {
-        //       continue;
-        //     }
-
-        //     unsigned int index = getIndex(mx, my);
-        //     uint8_t current_cost = costmap_[index];
-        //     // RCLCPP_INFO(logger_, "cost: %f", current_cost);
-        //     costmap_[index] = std::max(current_cost, uint8_t(LETHAL_OBSTACLE * probability * sqrt_2_pi_det_covariance));
-
-        //   }
-        // }
-
-        /////////////////////////////////////////////////////////////
-
-          rclcpp::Duration comp_time_ = clock_->now() - start_time_;
-
-          RCLCPP_INFO(logger_, "Duration %f", comp_time_.seconds());
         }
       }
-
     }
   }
 }
