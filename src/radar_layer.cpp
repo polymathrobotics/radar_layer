@@ -373,6 +373,9 @@ void RadarLayer::predictiveCost(nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr
         for (int k = 0; k < number_of_time_steps_; ++k) {
 
           Eigen::VectorXd mean = projectMean(obstacle_array->obstacles[i], sample_time_, k);
+          RCLCPP_INFO(logger_, "k: %i", k);
+          RCLCPP_INFO(logger_, "x: %f", mean(0));
+          RCLCPP_INFO(logger_, "y: %f", mean(1));
           Eigen::MatrixXd covariance = projectCovariance(obstacle_array->obstacles[i], sample_time_, k);
           Eigen::MatrixXd inv_covariance = Eigen::MatrixXd::Zero(2, 2);
           inv_covariance(0, 0) = 1 / covariance(0, 0);
