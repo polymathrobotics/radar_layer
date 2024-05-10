@@ -36,7 +36,7 @@ void RadarLayer::onInitialize()
   declareParameter("minimum_probability", rclcpp::ParameterValue(0.05));
   declareParameter("number_of_time_steps", rclcpp::ParameterValue(10));
   declareParameter("sample_time",rclcpp::ParameterValue(0.1));
-  declareParameter("stamp_footprint", rclcpp::ParameterValue(false));
+  declareParameter("stamp_footprint", rclcpp::ParameterValue(true));
 
   auto node = node_.lock();
 
@@ -828,7 +828,7 @@ Eigen::VectorXd RadarLayer::projectMean(
 
   position(0) = obstacle.position.x;
   position(1) = obstacle.position.y;
-  velocity(0) = 1.0; //obstacle.velocity.x;
+  velocity(0) = obstacle.velocity.x;
   velocity(1) = obstacle.velocity.y;
 
   position_projected = position + time_steps * sample_time * velocity;
