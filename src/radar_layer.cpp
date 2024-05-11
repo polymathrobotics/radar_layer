@@ -346,44 +346,29 @@ void RadarLayer::stampFootprint(nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr
       std::vector<int> x_index(length_in_grid * width_in_grid);
       std::vector<int> y_index(length_in_grid * width_in_grid);
 
-      populateGrid(obstacle_array->obstacles[i].position.x, 
-        obstacle_array->obstacles[i].position.y, 
-        length, 
-        width, 
-        i, 
-        points_in_obstacle_frame, 
-        points_in_global_frame,
-        xs,
-        ys,
-        x_index,
-        y_index,
-        obstacle_array);
-      
-      // rclcpp::Time start_time_ = clock_->now();
+      unsigned int point_in_obstacle_frame_index = 0;
+      for (int x_i = 0; x_i < length_in_grid; x_i++) {
+        for (int y_i = 0; y_i < width_in_grid; y_i++, point_in_obstacle_frame_index++) {
 
-      // unsigned int point_in_obstacle_frame_index = 0;
-      // for (int x_i = 0; x_i < length_in_grid; x_i++) {
-      //   for (int y_i = 0; y_i < width_in_grid; y_i++, point_in_obstacle_frame_index++) {
+          double dx = -length / 2 + x_i * resolution_;
+          double dy = -width / 2 + y_i * resolution_;
 
-      //     double dx = -length / 2 + x_i * resolution_;
-      //     double dy = -width / 2 + y_i * resolution_;
+          xs(x_i, y_i) = obstacle_array->obstacles[i].position.x + dx;
+          ys(x_i, y_i) = obstacle_array->obstacles[i].position.y + dy;
 
-      //     xs(x_i, y_i) = obstacle_array->obstacles[i].position.x + dx;
-      //     ys(x_i, y_i) = obstacle_array->obstacles[i].position.y + dy;
-
-      //     points_in_obstacle_frame[point_in_obstacle_frame_index].header.stamp =
-      //       obstacle_array->header.stamp;
-      //     points_in_obstacle_frame[point_in_obstacle_frame_index].header.frame_id =
-      //       obstacle_array->header.frame_id;
-      //     points_in_obstacle_frame[point_in_obstacle_frame_index].point.x =
-      //       obstacle_array->obstacles[i].position.x + dx;
-      //     points_in_obstacle_frame[point_in_obstacle_frame_index].point.y =
-      //       obstacle_array->obstacles[i].position.y + dy;
-      //     points_in_obstacle_frame[point_in_obstacle_frame_index].point.z = 0;
-      //     x_index[point_in_obstacle_frame_index] = x_i;
-      //     y_index[point_in_obstacle_frame_index] = y_i;
-      //   }
-      // }
+          points_in_obstacle_frame[point_in_obstacle_frame_index].header.stamp =
+            obstacle_array->header.stamp;
+          points_in_obstacle_frame[point_in_obstacle_frame_index].header.frame_id =
+            obstacle_array->header.frame_id;
+          points_in_obstacle_frame[point_in_obstacle_frame_index].point.x =
+            obstacle_array->obstacles[i].position.x + dx;
+          points_in_obstacle_frame[point_in_obstacle_frame_index].point.y =
+            obstacle_array->obstacles[i].position.y + dy;
+          points_in_obstacle_frame[point_in_obstacle_frame_index].point.z = 0;
+          x_index[point_in_obstacle_frame_index] = x_i;
+          y_index[point_in_obstacle_frame_index] = y_i;
+        }
+      }
 
       bool batch_transform_success = batchTransform2DPoints(
         x_x, x_y, y_x, y_y, dx, dy,
@@ -447,37 +432,24 @@ void RadarLayer::predictiveCost(nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr
             std::vector<int> x_index(length_in_grid * width_in_grid);
             std::vector<int> y_index(length_in_grid * width_in_grid);
 
-            populateGrid(mean(0), 
-              mean(1), 
-              length, 
-              width, 
-              i, 
-              points_in_obstacle_frame, 
-              points_in_global_frame,
-              xs,
-              ys,
-              x_index,
-              y_index,
-              obstacle_array);
+            unsigned int point_in_obstacle_frame_index = 0;
+            for (int x_i = 0; x_i < length_in_grid; x_i++) {
+              for (int y_i = 0; y_i < width_in_grid; y_i++, point_in_obstacle_frame_index++) {
 
-            // unsigned int point_in_obstacle_frame_index = 0;
-            // for (int x_i = 0; x_i < length_in_grid; x_i++) {
-            //   for (int y_i = 0; y_i < width_in_grid; y_i++, point_in_obstacle_frame_index++) {
+                double dx = -length / 2 + x_i * resolution_;
+                double dy = -width / 2 + y_i * resolution_;
 
-            //     double dx = -length / 2 + x_i * resolution_;
-            //     double dy = -width / 2 + y_i * resolution_;
-
-            //     xs(x_i, y_i) = mean(0) + dx;
-            //     ys(x_i, y_i) = mean(1) + dy;
-            //     points_in_obstacle_frame[point_in_obstacle_frame_index].header.stamp = obstacle_array->header.stamp;
-            //     points_in_obstacle_frame[point_in_obstacle_frame_index].header.frame_id = obstacle_array->header.frame_id;
-            //     points_in_obstacle_frame[point_in_obstacle_frame_index].point.x = mean(0) + dx;
-            //     points_in_obstacle_frame[point_in_obstacle_frame_index].point.y = mean(1) + dy;
-            //     points_in_obstacle_frame[point_in_obstacle_frame_index].point.z = 0;
-            //     x_index[point_in_obstacle_frame_index] = x_i;
-            //     y_index[point_in_obstacle_frame_index] = y_i;
-            //   }
-            // }
+                xs(x_i, y_i) = mean(0) + dx;
+                ys(x_i, y_i) = mean(1) + dy;
+                points_in_obstacle_frame[point_in_obstacle_frame_index].header.stamp = obstacle_array->header.stamp;
+                points_in_obstacle_frame[point_in_obstacle_frame_index].header.frame_id = obstacle_array->header.frame_id;
+                points_in_obstacle_frame[point_in_obstacle_frame_index].point.x = mean(0) + dx;
+                points_in_obstacle_frame[point_in_obstacle_frame_index].point.y = mean(1) + dy;
+                points_in_obstacle_frame[point_in_obstacle_frame_index].point.z = 0;
+                x_index[point_in_obstacle_frame_index] = x_i;
+                y_index[point_in_obstacle_frame_index] = y_i;
+              }
+            }
 
             bool batch_transform_success = batchTransform2DPoints(
               x_x, x_y, y_x, y_y, dx, dy,
