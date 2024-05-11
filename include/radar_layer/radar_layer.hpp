@@ -198,7 +198,9 @@ public:
   void getTransformCoefficients(std::string source_frame, 
   std::string target_frame, double & dx, double & dy, double & x_x, double & x_y, double & y_x, double & y_y);
 
-  void populateGrid(double length,
+  void populateGrid(double x_0,
+    double y_0,
+    double length,
     double width,
     int obstacle_index,
     std::vector<geometry_msgs::msg::PointStamped> & points_in_obstacle_frame,
