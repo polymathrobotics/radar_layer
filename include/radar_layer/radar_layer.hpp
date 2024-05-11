@@ -130,6 +130,60 @@ public:
     const nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr obstacles,
     const nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr detections);
 
+  void removeUnmatchedObstacles(
+    int number_of_obstacles,
+    std::vector<std::pair<size_t, size_t>> matched_indices,
+    const nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr obstacles);
+
+  void addUnmatchedDetections(
+    int number_of_detections,
+    std::vector<std::pair<size_t, size_t>> matched_indices,
+    const nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr obstacles,
+    const nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr detections);
+
+  std::vector<size_t> findUnmatchedIndices(
+    size_t number_of_elements,
+    const std::vector<std::pair<size_t, size_t>> & matched_indicies,
+    bool check_first_index);
+
+  void updateGaussian(
+    nav2_dynamic_msgs::msg::Obstacle & obstacle,
+    const nav2_dynamic_msgs::msg::Obstacle & detection,
+    double dt);
+
+  double getProbabilty(
+    const Eigen::MatrixXd & mean,
+    const Eigen::MatrixXd & inv_covariance,
+    double & sqrt_2_pi_det_covariance,
+    double x, double y);
+
+  bool batchTransformPoints(
+    const std::vector<geometry_msgs::msg::PointStamped> & input_points,
+    std::vector<geometry_msgs::msg::PointStamped> & output_points,
+    const std::string & target_frame,
+    const tf2::Duration & timeout) const;
+
+  bool batchTransform2DPoints(
+    double x_x,
+    double x_y,
+    double y_x,
+    double y_y,
+    double dx,
+    double dy,
+    const std::vector<geometry_msgs::msg::PointStamped> & input_points,
+    std::vector<geometry_msgs::msg::PointStamped> & output_points,
+    const std::string & target_frame,
+    const tf2::Duration & timeout) const;
+
+  Eigen::MatrixXd getProbabilityBatch(
+    const Eigen::VectorXd & mean,
+    const Eigen::MatrixXd & inv_covariance,
+    double sqrt_2_pi_det_covariance,
+    const Eigen::MatrixXd & xs,
+    const Eigen::MatrixXd & ys);
+
+  void getObstacleProbabilty(nav2_dynamic_msgs::msg::Obstacle & obstacle);
+
   bool transformPoint(
     const std_msgs::msg::Header obstacle_frame,
     const nav2_dynamic_msgs::msg::Obstacle & obstacle_track,
@@ -137,6 +191,25 @@ public:
     double dx,
     double dy)
   const;
+
+  void predictiveCost(nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr obstacle_array, int number_of_objects);
+  void stampFootprint(nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr obstacle_array, int number_of_objects);
+
+  void getTransformCoefficients(std::string source_frame, 
+  std::string target_frame, double & dx, double & dy, double & x_x, double & x_y, double & y_x, double & y_y);
+
+  void populateGrid(double x_0,
+    double y_0,
+    double length,
+    double width,
+    int obstacle_index,
+    std::vector<geometry_msgs::msg::PointStamped> & points_in_obstacle_frame,
+    std::vector<geometry_msgs::msg::PointStamped> & points_in_global_frame,
+    Eigen::MatrixXd & xs,
+    Eigen::MatrixXd & ys,
+    std::vector<int> x_index,
+    std::vector<int> y_index,
+    nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr obstacle_array);
 
 private:
   /// @brief Used to store observations from radar sensors
@@ -164,9 +237,13 @@ private:
     dyn_params_handler_;
 
   bool rolling_window_;
+  bool stamp_footprint_;
   int combination_method_;
   double min_bound;
   double max_bound;
+  double min_probability_;
+  int number_of_time_steps_;
+  double sample_time_;
   std::string global_frame_;
 
   tf2::Duration transform_tolerance_;
