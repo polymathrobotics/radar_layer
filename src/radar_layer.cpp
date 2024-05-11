@@ -36,7 +36,7 @@ void RadarLayer::onInitialize()
   declareParameter("minimum_probability", rclcpp::ParameterValue(0.01));
   declareParameter("number_of_time_steps", rclcpp::ParameterValue(10));
   declareParameter("sample_time",rclcpp::ParameterValue(0.1));
-  declareParameter("stamp_footprint", rclcpp::ParameterValue(false));
+  declareParameter("stamp_footprint", rclcpp::ParameterValue(true));
 
   auto node = node_.lock();
 
