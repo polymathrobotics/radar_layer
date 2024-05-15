@@ -6,6 +6,7 @@
 #include "nav2_costmap_2d/layered_costmap.hpp"
 #include "nav2_costmap_2d/costmap_layer.hpp"
 #include "nav2_costmap_2d/observation_buffer.hpp"
+#include "nav2_costmap_2d/inflation_layer.hpp"
 #include "radar_msgs/msg/radar_track.hpp"
 #include "radar_msgs/msg/radar_tracks.hpp"
 #include "tf2_ros/message_filter.h"
@@ -15,6 +16,10 @@
 #include <Eigen/Dense>
 #include <cmath>
 
+using nav2_costmap_2d::LETHAL_OBSTACLE;
+using nav2_costmap_2d::INSCRIBED_INFLATED_OBSTACLE;
+using nav2_costmap_2d::NO_INFORMATION;
+using rcl_interfaces::msg::ParameterType;
 
 namespace radar_layer
 {
@@ -192,13 +197,30 @@ public:
     double dy)
   const;
 
-  void predictiveCost(nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr obstacle_array, int number_of_objects);
-  void stampFootprint(nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr obstacle_array, int number_of_objects);
+  void predictiveCost(
+    nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr obstacle_array,
+    int number_of_objects);
 
-  void getTransformCoefficients(std::string source_frame, 
-  std::string target_frame, double & dx, double & dy, double & x_x, double & x_y, double & y_x, double & y_y);
+  void stampAndProjectFootprint(
+    nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr obstacle_array,
+    int number_of_objects);
 
-  void populateGrid(double x_0,
+  void getTransformCoefficients(
+    std::string source_frame,
+    std::string target_frame,
+    double & dx,
+    double & dy,
+    double & x_x,
+    double & x_y,
+    double & y_x,
+    double & y_y);
+
+  void inflateObstacle(
+    int min_x, int max_x, int min_y, int max_y, double ratio,
+    std::vector<int> cells_to_inflate_x, std::vector<int> cells_to_inflate_y);
+
+  void populateGrid(
+    double x_0,
     double y_0,
     double length,
     double width,
@@ -207,9 +229,54 @@ public:
     std::vector<geometry_msgs::msg::PointStamped> & points_in_global_frame,
     Eigen::MatrixXd & xs,
     Eigen::MatrixXd & ys,
-    std::vector<int> x_index,
-    std::vector<int> y_index,
+    std::vector<int> & x_index,
+    std::vector<int> & y_index,
     nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr obstacle_array);
+
+  //Taken from inflation_layer with no inscribed radius
+  inline unsigned char computeCost(double distance, double ratio) const
+  {
+    unsigned char cost = 0;
+    if (distance == 0) {
+      cost = LETHAL_OBSTACLE;
+    } else {
+      // make sure cost falls off by Euclidean distance
+      double factor = exp(-1.0 * cost_scaling_factor_ / ratio * (distance * resolution_));
+      cost = static_cast<unsigned char>((INSCRIBED_INFLATED_OBSTACLE - 1) * factor);
+    }
+    return cost;
+  }
+
+  inline unsigned char costLookup(
+    unsigned int mx, unsigned int my, unsigned int src_x,
+    unsigned int src_y)
+  {
+    unsigned int dx = (mx > src_x) ? mx - src_x : src_x - mx;
+    unsigned int dy = (my > src_y) ? my - src_y : src_y - my;
+    return cached_costs_[dx * cache_length_ + dy];
+  }
+
+  unsigned int cellDistance(double world_dist)
+  {
+    return layered_costmap_->getCostmap()->cellDistance(world_dist);
+  }
+
+  inline double distanceLookup(
+    unsigned int mx, unsigned int my, unsigned int src_x,
+    unsigned int src_y)
+  {
+    unsigned int dx = (mx > src_x) ? mx - src_x : src_x - mx;
+    unsigned int dy = (my > src_y) ? my - src_y : src_y - my;
+    return cached_distances_[dx * cache_length_ + dy];
+  }
+
+  void enqueue(
+    unsigned int index, unsigned int mx, unsigned int my,
+    unsigned int src_x, unsigned int src_y);
+
+  int generateIntegerDistances();
+
+  void computeCaches(double ratio);
 
 private:
   /// @brief Used to store observations from radar sensors
@@ -238,13 +305,25 @@ private:
 
   bool rolling_window_;
   bool stamp_footprint_;
+  bool inflate_obstacle_;
   int combination_method_;
   double min_bound;
   double max_bound;
   double min_probability_;
   int number_of_time_steps_;
   double sample_time_;
+  double inflation_radius_;
+  double cost_scaling_factor_;
+  unsigned int cell_inflation_radius_, size_x_, size_y_;
   std::string global_frame_;
+  std::vector<std::vector<nav2_costmap_2d::CellData>> inflation_cells_;
+  std::vector<std::vector<int>> distance_matrix_;
+
+  unsigned int cache_length_;
+  unsigned int cached_cell_inflation_radius_;
+  std::vector<unsigned char> cached_costs_;
+  std::vector<double> cached_distances_;
+  std::vector<bool> seen_;
 
   tf2::Duration transform_tolerance_;
 };
