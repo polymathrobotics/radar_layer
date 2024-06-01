@@ -32,9 +32,6 @@ void RadarLayer::onInitialize()
   declareParameter("number_of_time_steps", rclcpp::ParameterValue(1));
   declareParameter("sample_time", rclcpp::ParameterValue(0.1));
   declareParameter("stamp_footprint", rclcpp::ParameterValue(true));
-  declareParameter("inflate_obstacle", rclcpp::ParameterValue(false));
-  declareParameter("inflation_radius", rclcpp::ParameterValue(5.0));
-  declareParameter("cost_scaling_factor", rclcpp::ParameterValue(1.0));
 
   auto node = node_.lock();
 
@@ -49,17 +46,12 @@ void RadarLayer::onInitialize()
   node->get_parameter(name_ + "." + "number_of_time_steps", number_of_time_steps_);
   node->get_parameter(name_ + "." + "sample_time", sample_time_);
   node->get_parameter(name_ + "." + "stamp_footprint", stamp_footprint_);
-  node->get_parameter(name_ + "." + "inflate_obstacle", inflate_obstacle_);
-  node->get_parameter(name_ + "." + "inflation_radius", inflation_radius_);
-  node->get_parameter(name_ + "." + "cost_scaling_factor", cost_scaling_factor_);
   node->get_parameter("transform_tolerance", transform_tolerance);
   transform_tolerance_ = tf2::durationFromSec(transform_tolerance);
 
   rolling_window_ = layered_costmap_->isRolling();
 
   global_frame_ = layered_costmap_->getGlobalFrameID();
-
-  cell_inflation_radius_ = cellDistance(inflation_radius_);
 
   default_value_ = nav2_costmap_2d::FREE_SPACE;
 
@@ -68,8 +60,6 @@ void RadarLayer::onInitialize()
   auto sub_opt = rclcpp::SubscriptionOptions();
   sub_opt.callback_group = callback_group_;
 
-  // now we need to split the topics based on whitespace which we can use a
-  // stringstream for
   std::stringstream ss(topics_string);
 
   std::string source;
@@ -80,33 +70,8 @@ void RadarLayer::onInitialize()
     declareParameter(
       source + "." + "topic",
       rclcpp::ParameterValue(source));
-    declareParameter(
-      source + "." + "sensor_frame",
-      rclcpp::ParameterValue(std::string("")));
-    declareParameter(
-      source + "." + "data_type",
-      rclcpp::ParameterValue(std::string("ObstacleArray")));
 
     node->get_parameter(name_ + "." + source + "." + "topic", topic);
-    node->get_parameter(
-      name_ + "." + source + "." + "sensor_frame",
-      sensor_frame);
-    node->get_parameter(name_ + "." + source + "." + "data_type", data_type);
-
-    if (!(data_type == "ObstacleArray")) {
-      RCLCPP_FATAL(
-        logger_,
-        "Only topics that use obstacle array are currently supported");
-      throw std::runtime_error(
-              "Only topics that use obstacle array are currently supported");
-    }
-
-    RCLCPP_INFO(
-      logger_,
-      "Creating an observation buffer for source %s, topic %s, frame %s",
-      source.c_str(),
-      topic.c_str(),
-      sensor_frame.c_str());
 
     rmw_qos_profile_t custom_qos_profile = rmw_qos_profile_sensor_data;
     custom_qos_profile.depth = 50;
@@ -130,7 +95,7 @@ void RadarLayer::onInitialize()
     sub->unsubscribe();
 
     // A tf2_ros message filters which takes the topic from the subscriber
-    // message filter and checks if theres a transform to targer frame within
+    // message filter and checks if theres a transform to target frame within
     // the transform tolerance,
     // (https://docs.ros2.org/foxy/api/tf2_ros/classtf2__ros_1_1MessageFilter.html)
     // TODO: what if message type is not stamped with a TF frame?
@@ -203,7 +168,7 @@ void RadarLayer::updateBounds(
 
     if (number_of_objects > 0) {
       if (stamp_footprint_) {
-        stampAndProjectFootprint(obstacle_array, number_of_objects);
+        stampFootprint(obstacle_array, number_of_objects);
       } else {
         predictiveCost(obstacle_array, number_of_objects);
       }
@@ -219,9 +184,6 @@ void RadarLayer::updateCosts(
   int max_j)
 {
   std::lock_guard<Costmap2D::mutex_t> guard(*getMutex());
-
-  size_x_ = master_grid.getSizeInCellsX();
-  size_y_ = master_grid.getSizeInCellsY();
 
   if (!enabled_) {
     return;
@@ -293,9 +255,7 @@ void RadarLayer::populateGrid(
   double y_0,
   double length,
   double width,
-  int obstacle_index,
   std::vector<geometry_msgs::msg::PointStamped> & points_in_obstacle_frame,
-  std::vector<geometry_msgs::msg::PointStamped> & points_in_global_frame,
   Eigen::MatrixXd & xs,
   Eigen::MatrixXd & ys,
   std::vector<int> & x_index,
@@ -327,196 +287,6 @@ void RadarLayer::populateGrid(
       y_index[point_in_obstacle_frame_index] = y_i;
     }
   }
-}
-
-void RadarLayer::inflateObstacle(
-  int min_x, int max_x, int min_y, int max_y, double ratio,
-  std::vector<int> cells_to_inflate_x,
-  std::vector<int> cells_to_inflate_y)
-{
-  min_x -= static_cast<int>(cell_inflation_radius_);
-  min_y -= static_cast<int>(cell_inflation_radius_);
-  max_x += static_cast<int>(cell_inflation_radius_);
-  max_y += static_cast<int>(cell_inflation_radius_);
-
-  min_x = std::max(0, min_x);
-  min_y = std::max(0, min_y);
-  max_x = std::min(static_cast<int>(size_x_), max_x);
-  max_y = std::min(static_cast<int>(size_y_), max_y);
-
-  int size_x = max_x - min_x;
-  int size_y = max_y - min_y;
-
-  seen_ = std::vector<bool>(size_x_ * size_y_, false);
-  std::fill(begin(seen_), end(seen_), false);
-
-  computeCaches(ratio);
-
-  auto & obs_bin = inflation_cells_[0];
-
-  for (int i = 0; i < cells_to_inflate_x.size(); i++) {
-    int index = static_cast<int>(getIndex(cells_to_inflate_x[i], cells_to_inflate_y[i]));
-    obs_bin.emplace_back(
-      index, cells_to_inflate_x[i], cells_to_inflate_y[i], cells_to_inflate_x[i],
-      cells_to_inflate_y[i]);
-  }
-
-  for (const auto & dist_bin : inflation_cells_) {
-    for (std::size_t i = 0; i < dist_bin.size(); ++i) {
-      // Do not use iterator or for-range based loops to
-      // iterate though dist_bin, since it's size might
-      // change when a new cell is enqueued, invalidating all iterators
-      unsigned int index = dist_bin[i].index_;
-
-      // ignore if already visited
-      if (seen_[index]) {
-        continue;
-      }
-
-      seen_[index] = true;
-
-      unsigned int mx = dist_bin[i].x_;
-      unsigned int my = dist_bin[i].y_;
-      unsigned int sx = dist_bin[i].src_x_;
-      unsigned int sy = dist_bin[i].src_y_;
-
-      //assign the cost associated with the distance from an obstacle to the cell
-      unsigned char cost = costLookup(mx, my, sx, sy);
-      unsigned char old_cost = costmap_[index];
-
-      // In order to avoid artifacts appeared out of boundary areas
-      // when some layer is going after inflation_layer,
-      // we need to apply inflation_layer only to inside of given bounds
-      if (static_cast<int>(mx) >= min_x && static_cast<int>(my) >= min_y &&
-        static_cast<int>(mx) < max_x && static_cast<int>(my) < max_y)
-      {
-        if (old_cost == NO_INFORMATION) {
-          costmap_[index] = cost * ratio;
-        } else {
-          costmap_[index] = std::max(old_cost, static_cast<unsigned char>(cost * ratio));
-        }
-      }
-
-      // attempt to put the neighbors of the current cell onto the inflation list
-      if (mx > 0) {
-        //RCLCPP_INFO(logger_, "Adding point to the left");
-        enqueue(index - 1, mx - 1, my, sx, sy);
-      }
-      if (my > 0) {
-        //RCLCPP_INFO(logger_, "Adding point to the top");
-        enqueue(index - size_x_, mx, my - 1, sx, sy);
-      }
-      if (mx < size_x_ - 1) {
-        //RCLCPP_INFO(logger_, "Adding point to the right");
-        enqueue(index + 1, mx + 1, my, sx, sy);
-      }
-      if (my < size_y_ - 1) {
-        //RCLCPP_INFO(logger_, "Adding point to the bottom");
-        enqueue(index + size_x_, mx, my + 1, sx, sy);
-      }
-    }
-  }
-}
-
-void RadarLayer::enqueue(
-  unsigned int index, unsigned int mx, unsigned int my,
-  unsigned int src_x, unsigned int src_y)
-{
-  if (!seen_[index]) {
-    // we compute our distance table one cell further than the
-    // inflation radius dictates so we can make the check below
-    double distance = distanceLookup(mx, my, src_x, src_y);
-
-    // we only want to put the cell in the list if it is within
-    // the inflation radius of the obstacle point
-    if (distance > cell_inflation_radius_) {
-      return;
-    }
-
-    const unsigned int r = cell_inflation_radius_ + 2;
-
-    // push the cell data onto the inflation list and mark
-    inflation_cells_[distance_matrix_[mx - src_x + r][my - src_y + r]].emplace_back(
-      index, mx, my, src_x, src_y);
-  }
-}
-
-void RadarLayer::computeCaches(double ratio)
-{
-  std::lock_guard<Costmap2D::mutex_t> guard(*getMutex());
-  if (cell_inflation_radius_ == 0) {
-    return;
-  }
-
-  cache_length_ = cell_inflation_radius_ + 2;
-
-  // based on the inflation radius... compute distance and cost caches
-  if (cell_inflation_radius_ != cached_cell_inflation_radius_) {
-    cached_costs_.resize(cache_length_ * cache_length_);
-    cached_distances_.resize(cache_length_ * cache_length_);
-
-    for (unsigned int i = 0; i < cache_length_; ++i) {
-      for (unsigned int j = 0; j < cache_length_; ++j) {
-        cached_distances_[i * cache_length_ + j] = hypot(i, j);
-      }
-    }
-
-    cached_cell_inflation_radius_ = cell_inflation_radius_;
-  }
-
-  for (unsigned int i = 0; i < cache_length_; ++i) {
-    for (unsigned int j = 0; j < cache_length_; ++j) {
-      cached_costs_[i * cache_length_ + j] = computeCost(
-        cached_distances_[i * cache_length_ + j],
-        1.0);
-    }
-  }
-
-  int max_dist = generateIntegerDistances();
-  inflation_cells_.clear();
-  inflation_cells_.resize(max_dist + 1);
-  for (auto & dist : inflation_cells_) {
-    dist.reserve(200);
-  }
-}
-
-int RadarLayer::generateIntegerDistances()
-{
-  const int r = cell_inflation_radius_ + 2;
-  const int size = r * 2 + 1;
-
-  std::vector<std::pair<int, int>> points;
-
-  for (int y = -r; y <= r; y++) {
-    for (int x = -r; x <= r; x++) {
-      if (x * x + y * y <= r * r) {
-        points.emplace_back(x, y);
-      }
-    }
-  }
-
-  std::sort(
-    points.begin(), points.end(),
-    [](const std::pair<int, int> & a, const std::pair<int, int> & b) -> bool {
-      return a.first * a.first + a.second * a.second < b.first * b.first + b.second * b.second;
-    }
-  );
-
-  std::vector<std::vector<int>> distance_matrix(size, std::vector<int>(size, 0));
-  std::pair<int, int> last = {0, 0};
-  int level = 0;
-  for (auto const & p : points) {
-    if (p.first * p.first + p.second * p.second !=
-      last.first * last.first + last.second * last.second)
-    {
-      level++;
-    }
-    distance_matrix[p.first + r][p.second + r] = level;
-    last = p;
-  }
-
-  distance_matrix_ = distance_matrix;
-  return level;
 }
 
 void RadarLayer::predictiveCost(
@@ -554,13 +324,13 @@ void RadarLayer::predictiveCost(
       double covariance_ratio = sqrt_2_pi_det_covariance_0 / sqrt_2_pi_det_covariance;
 
       if (covariance_ratio < min_probability_) {
-        RCLCPP_INFO(logger_, "projected mean too small, breaking");
+        RCLCPP_DEBUG(logger_, "projected mean too small, breaking");
         break;
       } else {
         double length = 2 *
-          sqrt(-2 * (log(min_probability_) - log(covariance_ratio)) * covariance(0, 0));
+          sqrt(-2 * (log(min_probability_) - log(covariance_ratio)) * covariance(0, 0)); //these should act more like the limits of the search
         double width = 2 *
-          sqrt(-2 * (log(min_probability_) - log(covariance_ratio)) * covariance(1, 1));
+          sqrt(-2 * (log(min_probability_) - log(covariance_ratio)) * covariance(1, 1)); //these should act more like the limits of the search
         int length_in_grid = int(length / resolution_);
         int width_in_grid = int(width / resolution_);
 
@@ -575,7 +345,7 @@ void RadarLayer::predictiveCost(
 
         populateGrid(
           mean(0), mean(
-            1), length, width, i, points_in_obstacle_frame, points_in_global_frame, xs, ys, x_index, y_index,
+            1), length, width, points_in_obstacle_frame, xs, ys, x_index, y_index,
           obstacle_array);
 
         bool batch_transform_success = batchTransform2DPoints(
@@ -599,12 +369,17 @@ void RadarLayer::predictiveCost(
               unsigned int index = getIndex(mx, my);
               uint8_t current_cost = costmap_[index];
 
-              costmap_[index] =
-                std::max(
-                current_cost,
-                uint8_t(
-                  LETHAL_OBSTACLE *
-                  probabilities(x_index[i], y_index[i]) * sqrt_2_pi_det_covariance_0));
+              if (probabilities(
+                  x_index[i],
+                  y_index[i]) * sqrt_2_pi_det_covariance_0 > min_probability_)
+              {
+                costmap_[index] =
+                  std::max(
+                  current_cost,
+                  uint8_t(
+                    LETHAL_OBSTACLE *
+                    probabilities(x_index[i], y_index[i]) * sqrt_2_pi_det_covariance_0));
+              }
             }
           }
         }
@@ -613,7 +388,7 @@ void RadarLayer::predictiveCost(
   }
 }
 
-void RadarLayer::stampAndProjectFootprint(
+void RadarLayer::stampFootprint(
   nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr obstacle_array, int number_of_objects)
 {
 
@@ -631,103 +406,53 @@ void RadarLayer::stampAndProjectFootprint(
     y_y);
 
   for (size_t i = 0; i < number_of_objects; i++) {
+    double length = obstacle_array->obstacles[i].size.x;
+    double width = obstacle_array->obstacles[i].size.y;
 
-    double sqrt_2_pi_det_covariance_0 = sqrt(
-      2 * M_PI * obstacle_array->obstacles[i].position_covariance.x *
-      obstacle_array->obstacles[i].position_covariance.y);
+    int length_in_grid = int(length / resolution_);
+    int width_in_grid = int(width / resolution_);
 
-    for (int k = 0; k < number_of_time_steps_; ++k) {
+    Eigen::MatrixXd xs(length_in_grid, width_in_grid);
+    Eigen::MatrixXd ys(length_in_grid, width_in_grid);
+    std::vector<geometry_msgs::msg::PointStamped> points_in_obstacle_frame(length_in_grid *
+      width_in_grid);
+    std::vector<geometry_msgs::msg::PointStamped> points_in_global_frame(length_in_grid *
+      width_in_grid);
+    std::vector<int> x_index(length_in_grid * width_in_grid);
+    std::vector<int> y_index(length_in_grid * width_in_grid);
 
-      Eigen::VectorXd mean = projectMean(obstacle_array->obstacles[i], sample_time_, k);
-      Eigen::MatrixXd covariance = projectCovariance(obstacle_array->obstacles[i], sample_time_, k);
-      Eigen::MatrixXd inv_covariance = Eigen::MatrixXd::Zero(2, 2);
-      inv_covariance(0, 0) = 1 / covariance(0, 0);
-      inv_covariance(1, 1) = 1 / covariance(1, 1);
+    populateGrid(
+      obstacle_array->obstacles[i].position.x, obstacle_array->obstacles[i].position.y,
+      length, width, points_in_obstacle_frame, xs, ys, x_index, y_index,
+      obstacle_array);
 
-      double sqrt_2_pi_det_covariance = sqrt(2 * M_PI * covariance(0, 0) * covariance(1, 1));
-      double covariance_ratio = sqrt_2_pi_det_covariance_0 / sqrt_2_pi_det_covariance;
+    bool batch_transform_success = batchTransform2DPoints(
+      x_x, x_y, y_x, y_y, dx, dy,
+      points_in_obstacle_frame,
+      points_in_global_frame, global_frame_,
+      transform_tolerance_);
 
-      if (covariance_ratio < min_probability_) {
-        RCLCPP_INFO(logger_, "projected mean too small, breaking");
-        break;
-      } else {
+    std::vector<int> cells_to_inflate_x;
+    std::vector<int> cells_to_inflate_y;
 
-        double length = obstacle_array->obstacles[i].size.x;
-        double width = obstacle_array->obstacles[i].size.y;
+    if (batch_transform_success) {
+      for (size_t i = 0; i < points_in_global_frame.size(); i++) {
+        unsigned int mx, my;
 
-        int length_in_grid = int(length / resolution_);
-        int width_in_grid = int(width / resolution_);
-
-        Eigen::MatrixXd xs(length_in_grid, width_in_grid);
-        Eigen::MatrixXd ys(length_in_grid, width_in_grid);
-        std::vector<geometry_msgs::msg::PointStamped> points_in_obstacle_frame(length_in_grid *
-          width_in_grid);
-        std::vector<geometry_msgs::msg::PointStamped> points_in_global_frame(length_in_grid *
-          width_in_grid);
-        std::vector<int> x_index(length_in_grid * width_in_grid);
-        std::vector<int> y_index(length_in_grid * width_in_grid);
-
-        populateGrid(
-          mean(0), mean(
-            1), length, width, i, points_in_obstacle_frame, points_in_global_frame, xs, ys, x_index, y_index,
-          obstacle_array);
-
-        bool batch_transform_success = batchTransform2DPoints(
-          x_x, x_y, y_x, y_y, dx, dy,
-          points_in_obstacle_frame,
-          points_in_global_frame, global_frame_,
-          transform_tolerance_);
-
-        std::vector<int> cells_to_inflate_x;
-        std::vector<int> cells_to_inflate_y;
-
-        if (batch_transform_success) {
-
-          int min_x, min_y, max_x, max_y;
-
-          for (size_t i = 0; i < points_in_global_frame.size(); i++) {
-            unsigned int mx, my;
-
-            if (worldToMap(
-                points_in_global_frame[i].point.x, points_in_global_frame[i].point.y, mx,
-                my))
-            {
-
-              cells_to_inflate_x.push_back(mx);
-              cells_to_inflate_y.push_back(my);
-
-              if (i == 0) {
-                min_x = mx;
-                max_x = mx;
-                min_y = my;
-                max_y = my;
-              } else {
-                if (mx < min_x) {min_x = mx;}
-                if (mx > max_x) {max_x = mx;}
-                if (my < min_y) {min_y = my;}
-                if (my > max_y) {max_y = my;}
-              }
-
-              unsigned int index = getIndex(mx, my);
-              unsigned char old_cost = costmap_[index];
-              costmap_[index] =
-                std::max(
-                old_cost,
-                static_cast<unsigned char>(LETHAL_OBSTACLE * covariance_ratio));
-            }
-          }
-
-          if (inflate_obstacle_) {
-            inflateObstacle(
-              min_x, max_x, min_y, max_y, covariance_ratio, cells_to_inflate_x,
-              cells_to_inflate_y);
-          }
-
+        if (worldToMap(
+            points_in_global_frame[i].point.x, points_in_global_frame[i].point.y, mx,
+            my))
+        {
+          unsigned int index = getIndex(mx, my);
+          costmap_[index] = LETHAL_OBSTACLE;
         }
       }
+
     }
+
   }
 }
+
 
 void RadarLayer::getTransformCoefficients(
   std::string source_frame,
@@ -800,7 +525,6 @@ void RadarLayer::findUuid(
       *obstacles = *detections;
     } else {
       obstacles->header.stamp = detections->header.stamp;
-      //TODO: Vectorize this nested for loop for efficiency (Alex)
       for (size_t i = 0; i < number_of_detections; i++) {
         for (size_t j = 0; j < number_of_obstacles; j++) {
           if (memcmp(
@@ -914,31 +638,6 @@ void RadarLayer::updateGaussian(
   obstacle.velocity_covariance.x = new_velocity_covariance(0, 0);
   obstacle.velocity_covariance.y = new_velocity_covariance(1, 1);
 
-}
-
-void RadarLayer::getObstacleProbabilty(nav2_dynamic_msgs::msg::Obstacle & obstacle)
-{
-
-  Eigen::Vector2d mean(obstacle.position.x, obstacle.position.y);
-  Eigen::MatrixXd covariance = Eigen::MatrixXd::Zero(2, 2);
-  covariance(0, 0) = obstacle.position_covariance.x;
-  covariance(1, 1) = obstacle.position_covariance.y;
-  Eigen::MatrixXd inv_covariance = covariance.inverse();
-  double sqrt_2_pi_det_covariance = sqrt(2 * M_PI * covariance.determinant());
-
-  double x, y;
-  double probability;
-
-  for (unsigned int my = 0; my < size_y_; my++) {
-    for (unsigned int mx = 0; mx < size_x_; mx++) {
-      mapToWorld(mx, my, x, y);
-      probability = getProbabilty(mean, inv_covariance, sqrt_2_pi_det_covariance, x, y);
-      unsigned int index = getIndex(x, y);
-      uint8_t current_cost = costmap_[index];
-      costmap_[index] =
-        std::max(current_cost, uint8_t(LETHAL_OBSTACLE * probability * sqrt_2_pi_det_covariance));
-    }
-  }
 }
 
 Eigen::MatrixXd RadarLayer::getProbabilityBatch(
@@ -1059,37 +758,6 @@ bool RadarLayer::batchTransformPoints(
     }
   }
   return all_transformed;
-}
-
-bool RadarLayer::transformPoint(
-  const std_msgs::msg::Header obstacle_header,
-  const nav2_dynamic_msgs::msg::Obstacle & obstacle,
-  geometry_msgs::msg::PointStamped & out_point,
-  double dx = 0.0,
-  double dy =
-  0.0) const
-{
-  geometry_msgs::msg::PointStamped point_in_obstacle_frame;
-
-  point_in_obstacle_frame.header.stamp = obstacle_header.stamp;
-  point_in_obstacle_frame.header.frame_id = obstacle_header.frame_id;
-  point_in_obstacle_frame.point.x = obstacle.position.x + dx;
-  point_in_obstacle_frame.point.y = obstacle.position.y + dy;
-  point_in_obstacle_frame.point.z = 0;
-
-
-  try {
-    tf_->transform(
-      point_in_obstacle_frame,
-      out_point,
-      global_frame_,
-      transform_tolerance_);
-    out_point.header.stamp = point_in_obstacle_frame.header.stamp;
-    return true;
-  } catch (tf2::TransformException & ex) {
-    RCLCPP_ERROR(logger_, "Exception in transformPose: %s", ex.what());
-  }
-  return false;
 }
 
 Eigen::VectorXd RadarLayer::projectMean(
