@@ -252,7 +252,7 @@ public:
    * @param number_of_objects number of obstacles stored
    */
   void stampFootprint(
-    nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr obstacle_array, 
+    nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr obstacle_array,
     int number_of_objects);
 
   /**
@@ -317,7 +317,7 @@ public:
    * @param obstacle obstacle to project through time
    * @param sample_time sample time to project covariance
    * @param time_steps number of timesteps to project covariance
-   */ 
+   */
   Eigen::MatrixXd projectCovariance(
     nav2_dynamic_msgs::msg::Obstacle obstacle,
     double sample_time,
@@ -353,14 +353,14 @@ private:
 
   /// @brief Used for projection of mean and covariance
   int number_of_time_steps_;
-  
+
   /// @brief Used for projection of mean and covariance
   double sample_time_;
 
   /// @brief name of global frame
   std::string global_frame_;
 
-  ///@brief Whether to use the stamp footprint method or not
+  /// @brief Whether to use the stamp footprint method or not
   bool stamp_footprint_;
 
   tf2::Duration transform_tolerance_;
@@ -368,7 +368,6 @@ private:
   int combination_method_;
   double min_bound;
   double max_bound;
-  
 };
 } // namespace radar_layer
 
