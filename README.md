@@ -5,9 +5,32 @@ The radar_layer package is a costmap plugin for Nav2 Costmap 2d to turn radar tr
 This is the simplest method where a rectangle determined by the x and y size of the obstacle, is placed into the costmap as a lethal obstacle, around the obstacle's centroid. This placed lethal obstacle can then be inflated with the inflation layer for planning purposes 
 
 ### 2D Gaussian Process
-The cost is distributed as a 2D gaussian, where the centroid position is the highest cost and the cost surrounding the centroid decreases like a 2D normal distribution, based on the position covariance. 
+The cost is distributed as a 2D gaussian, where the centroid position is the highest cost and the cost surrounding the centroid decreases like a 2D normal distribution, based on the position covariance. To incorporate the size of the obstacle, the position covariance is extended when evaluating the probability density function as follows:
 
-Should the radar track also have velocity, the user may choose to project the gaussian distributed costmap into the future in order to plan to avoid a moving object in the future. The original Gaussian's mean is projected forward with the velocity, and the projected covariance is spread and scaled down as a function of the velocity covariance.
+$$
+\Sigma = \begin{bmatrix}
+\sigma_x & 0 \\
+0 & \sigma_y
+\end{bmatrix} +
+\begin{bmatrix}
+\frac{l}{2} & 0 \\
+0 & \frac{w}{2}
+\end{bmatrix}
+$$
+
+with probability density function
+
+$$
+f = \frac{1}{\sqrt{2\pi|\Sigma|}}\exp{\left(-\frac{1}{2}\begin{bmatrix}
+x-\mu_x \\
+y-\mu_y 
+\end{bmatrix}^T \Sigma^{-1} \begin{bmatrix}
+x-\mu_x \\
+y-\mu_y 
+\end{bmatrix}\right)}
+$$
+
+where $\sigma_x$ and $\sigma_y$ are the position covariances of x and y, respectively, $l$ and $w$ are the length and width of the obstacle respectively, and $\mu_x$ and $\mu_y$ are the means of x and y respectively. Should the radar track also have velocity, the user may choose to project the gaussian distributed costmap into the future in order to plan to avoid a moving object in the future. The original Gaussian's mean is projected forward with the velocity, and the projected covariance is spread and scaled down as a function of the velocity covariance.
 
 The algorithm used in this package is based on the following work:
 

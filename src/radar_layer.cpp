@@ -309,13 +309,18 @@ void RadarLayer::predictiveCost(
   for (size_t i = 0; i < number_of_objects; i++) {
 
     double sqrt_2_pi_det_covariance_0 = sqrt(
-      2 * M_PI * obstacle_array->obstacles[i].position_covariance.x *
-      obstacle_array->obstacles[i].position_covariance.y);
+      2 * M_PI *
+      (obstacle_array->obstacles[i].position_covariance.x + obstacle_array->obstacles[i].size.x /
+      2) *
+      (obstacle_array->obstacles[i].position_covariance.y + obstacle_array->obstacles[i].size.y /
+      2));
 
     for (int k = 0; k < number_of_time_steps_; ++k) {
 
       Eigen::VectorXd mean = projectMean(obstacle_array->obstacles[i], sample_time_, k);
       Eigen::MatrixXd covariance = projectCovariance(obstacle_array->obstacles[i], sample_time_, k);
+      covariance(0, 0) += obstacle_array->obstacles[i].size.x / 2;
+      covariance(1, 1) += obstacle_array->obstacles[i].size.y / 2;
       Eigen::MatrixXd inv_covariance = Eigen::MatrixXd::Zero(2, 2);
       inv_covariance(0, 0) = 1 / covariance(0, 0);
       inv_covariance(1, 1) = 1 / covariance(1, 1);
@@ -359,26 +364,26 @@ void RadarLayer::predictiveCost(
           sqrt_2_pi_det_covariance, xs, ys);
 
         if (batch_transform_success) {
-          for (size_t i = 0; i < points_in_global_frame.size(); i++) {
+          for (size_t j = 0; j < points_in_global_frame.size(); j++) {
             unsigned int mx, my;
 
             if (worldToMap(
-                points_in_global_frame[i].point.x, points_in_global_frame[i].point.y, mx,
+                points_in_global_frame[j].point.x, points_in_global_frame[j].point.y, mx,
                 my))
             {
               unsigned int index = getIndex(mx, my);
               uint8_t current_cost = costmap_[index];
 
               if (probabilities(
-                  x_index[i],
-                  y_index[i]) * sqrt_2_pi_det_covariance_0 > min_probability_)
+                  x_index[j],
+                  y_index[j]) * sqrt_2_pi_det_covariance_0 > min_probability_)
               {
                 costmap_[index] =
                   std::max(
                   current_cost,
                   uint8_t(
                     LETHAL_OBSTACLE *
-                    probabilities(x_index[i], y_index[i]) * sqrt_2_pi_det_covariance_0));
+                    probabilities(x_index[j], y_index[j]) * sqrt_2_pi_det_covariance_0));
               }
             }
           }
