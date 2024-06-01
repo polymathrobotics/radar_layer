@@ -81,16 +81,6 @@ public:
     int max_i,
     int max_j);
 
-  Eigen::VectorXd projectMean(
-    nav2_dynamic_msgs::msg::Obstacle obstacle,
-    double sample_time,
-    int time_steps);
-
-  Eigen::MatrixXd projectCovariance(
-    nav2_dynamic_msgs::msg::Obstacle obstacle,
-    double sample_time,
-    int time_steps);
-
   /**
    * @brief Deactivate the layer
    */
@@ -131,43 +121,95 @@ public:
     const std::shared_ptr<nav2_dynamic_msgs::msg::ObstacleArray> & detection_buffer,
     const std::shared_ptr<nav2_dynamic_msgs::msg::ObstacleArray> & obstacle_buffer);
 
+  /**
+   * @brief A function to match the uuid of existing obstacles to new detections
+   * @param obstacles vector of stored obstacles
+   * @param detections vector of new detections
+   */
   void findUuid(
     const nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr obstacles,
     const nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr detections);
 
+  /**
+   * @brief A function to remove obstacles that are no longer exist
+   * @param number_of_obstacles number of obstacles stored
+   * @param matched_indicies vector pair associated obstacles with detections
+   * @param obstacles vector of stored obstacles
+   */
   void removeUnmatchedObstacles(
     int number_of_obstacles,
     std::vector<std::pair<size_t, size_t>> matched_indices,
     const nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr obstacles);
 
+  /**
+   * @brief A function to add new detections
+   * @param number_of_detections number of detections found
+   * @param matched_indicies vector pair associated obstacles with detections
+   * @param obstacles vector of stored obstacles
+   * @param detections vector of new detections
+   */
   void addUnmatchedDetections(
     int number_of_detections,
     std::vector<std::pair<size_t, size_t>> matched_indices,
     const nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr obstacles,
     const nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr detections);
 
+  /**
+   * @brief A function to find unmatched obstacles or detections, returns index of unmatched obstacle or detection
+   * @param number_of_elements number of obstacles or detections
+   * @param matched_indicies vector pair associated obstacles with detections
+   * @param check_first_index flag to check obstacle or detection. True checks for unmatched detections, False checks for unmatched obstacles
+   */
   std::vector<size_t> findUnmatchedIndices(
     size_t number_of_elements,
     const std::vector<std::pair<size_t, size_t>> & matched_indicies,
     bool check_first_index);
 
+  /**
+   * @brief A function to update the position and velocity gaussian of a stored obstacl
+   * @param obstacle obstacle to be updated
+   * @param detection current associated detection
+   * @param dt time between detections
+   */
   void updateGaussian(
     nav2_dynamic_msgs::msg::Obstacle & obstacle,
     const nav2_dynamic_msgs::msg::Obstacle & detection,
     double dt);
 
+  /**
+   * @brief A function to get the probability of occupancy of a single 2D point
+   * @param mean x, y position of a obstacle
+   * @param inv_covariance inverse covariance of th obstacl
+   * @param sqrt_2_pi_det_covariance square root of 2 pi times the determinant of the covariance
+   * @param x x coordinate of interest
+   * @param y y coordinate of interest
+   */
   double getProbabilty(
     const Eigen::MatrixXd & mean,
     const Eigen::MatrixXd & inv_covariance,
     double & sqrt_2_pi_det_covariance,
     double x, double y);
 
+  /**
+   * @brief A function to transform a group of points into another frame
+   * @param input_points a vector of input points to be transformed
+   * @param output_points a vector to store the transformed points
+   * @param target_frame frame to transform the points to
+   * @param timeout transform timeout
+   */
   bool batchTransformPoints(
     const std::vector<geometry_msgs::msg::PointStamped> & input_points,
     std::vector<geometry_msgs::msg::PointStamped> & output_points,
     const std::string & target_frame,
     const tf2::Duration & timeout) const;
 
+  /**
+   * @brief A function to transform a group of points into another frame
+   * @param input_points a vector of input points to be transformed
+   * @param output_points a vector to store the transformed points
+   * @param target_frame frame to transform the points to
+   * @param timeout transform timeout
+   */
   bool batchTransform2DPoints(
     double x_x,
     double x_y,
@@ -180,6 +222,14 @@ public:
     const std::string & target_frame,
     const tf2::Duration & timeout) const;
 
+  /**
+   * @brief A function to get the probability of occupancy of a batch of points
+   * @param mean x, y position of an obstacle
+   * @param inv_covariance inverse covariance of the obstacle
+   * @param sqrt_2_pi_det_covariance square root of 2 pi times the determinant of the covariance
+   * @param xs vector of x coordinates of interest
+   * @param ys vector of y coordinates of interest
+   */
   Eigen::MatrixXd getProbabilityBatch(
     const Eigen::VectorXd & mean,
     const Eigen::MatrixXd & inv_covariance,
@@ -187,24 +237,35 @@ public:
     const Eigen::MatrixXd & xs,
     const Eigen::MatrixXd & ys);
 
-  void getObstacleProbabilty(nav2_dynamic_msgs::msg::Obstacle & obstacle);
-
-  bool transformPoint(
-    const std_msgs::msg::Header obstacle_frame,
-    const nav2_dynamic_msgs::msg::Obstacle & obstacle_track,
-    geometry_msgs::msg::PointStamped & out_point,
-    double dx,
-    double dy)
-  const;
-
+  /**
+   * @brief A function to populate costmap using gaussian projection
+   * @param obstacle_array array of stored obstacles
+   * @param number_of_objects number of obstacles stored
+   */
   void predictiveCost(
     nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr obstacle_array,
     int number_of_objects);
 
-  void stampAndProjectFootprint(
-    nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr obstacle_array,
+  /**
+   * @brief A function to stamp the footprint of the obstacles into the costmap as lethal zones
+   * @param obstacle_array array of stored obstacles
+   * @param number_of_objects number of obstacles stored
+   */
+  void stampFootprint(
+    nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr obstacle_array, 
     int number_of_objects);
 
+  /**
+   * @brief A function to precalculate coefficients for 2D transforms
+   * @param source_frame frame to transform from
+   * @param target_frame frame to transform to
+   * @param dx change in x in source frame
+   * @param dy change in y in source frame
+   * @param x_x scalar to transform x in source frame to x in target frame
+   * @param x_y scalar to transform x in source frame to y in target frame
+   * @param y_x scalar to transform y in source frame to x in target frame
+   * @param y_y scalar to transform y in source frame to y in target frame
+   */
   void getTransformCoefficients(
     std::string source_frame,
     std::string target_frame,
@@ -215,68 +276,52 @@ public:
     double & y_x,
     double & y_y);
 
-  void inflateObstacle(
-    int min_x, int max_x, int min_y, int max_y, double ratio,
-    std::vector<int> cells_to_inflate_x, std::vector<int> cells_to_inflate_y);
-
+  /**
+   * @brief A function to populate vectors to evaluate gaussian distributions of obstacles
+   * @param x_0 x of centroid of obstacle in sensor frame
+   * @param y_0 y of centroid of obstacle in sensor frame
+   * @param length length of grid to be populated in [m]
+   * @param width width of grid to be populated in [m]
+   * @param points_in_obstacle_frame vector to store points in the obstacle frame
+   * @param xs matrix to store x coordinate
+   * @param ys matrix to store y coordinate
+   * @param x_index vector to store x index of cell in occupancy grid
+   * @param y_index vector to store y index of cell in occupancy grid
+   * @param obstacle_array array of stored obstacles
+   */
   void populateGrid(
     double x_0,
     double y_0,
     double length,
     double width,
-    int obstacle_index,
     std::vector<geometry_msgs::msg::PointStamped> & points_in_obstacle_frame,
-    std::vector<geometry_msgs::msg::PointStamped> & points_in_global_frame,
     Eigen::MatrixXd & xs,
     Eigen::MatrixXd & ys,
     std::vector<int> & x_index,
     std::vector<int> & y_index,
     nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr obstacle_array);
 
-  //Taken from inflation_layer with no inscribed radius
-  inline unsigned char computeCost(double distance, double ratio) const
-  {
-    unsigned char cost = 0;
-    if (distance == 0) {
-      cost = LETHAL_OBSTACLE;
-    } else {
-      // make sure cost falls off by Euclidean distance
-      double factor = exp(-1.0 * cost_scaling_factor_ / ratio * (distance * resolution_));
-      cost = static_cast<unsigned char>((INSCRIBED_INFLATED_OBSTACLE - 1) * factor);
-    }
-    return cost;
-  }
+  /**
+   * @brief A function to project the mean of an obstacle through time
+   * @param obstacle obstacle to project through time
+   * @param sample_time sample time to project mean
+   * @param time_steps number of timesteps to project mean
+   */
+  Eigen::VectorXd projectMean(
+    nav2_dynamic_msgs::msg::Obstacle obstacle,
+    double sample_time,
+    int time_steps);
 
-  inline unsigned char costLookup(
-    unsigned int mx, unsigned int my, unsigned int src_x,
-    unsigned int src_y)
-  {
-    unsigned int dx = (mx > src_x) ? mx - src_x : src_x - mx;
-    unsigned int dy = (my > src_y) ? my - src_y : src_y - my;
-    return cached_costs_[dx * cache_length_ + dy];
-  }
-
-  unsigned int cellDistance(double world_dist)
-  {
-    return layered_costmap_->getCostmap()->cellDistance(world_dist);
-  }
-
-  inline double distanceLookup(
-    unsigned int mx, unsigned int my, unsigned int src_x,
-    unsigned int src_y)
-  {
-    unsigned int dx = (mx > src_x) ? mx - src_x : src_x - mx;
-    unsigned int dy = (my > src_y) ? my - src_y : src_y - my;
-    return cached_distances_[dx * cache_length_ + dy];
-  }
-
-  void enqueue(
-    unsigned int index, unsigned int mx, unsigned int my,
-    unsigned int src_x, unsigned int src_y);
-
-  int generateIntegerDistances();
-
-  void computeCaches(double ratio);
+  /**
+   * @brief A function to project the covariance of an obstacle through time
+   * @param obstacle obstacle to project through time
+   * @param sample_time sample time to project covariance
+   * @param time_steps number of timesteps to project covariance
+   */ 
+  Eigen::MatrixXd projectCovariance(
+    nav2_dynamic_msgs::msg::Obstacle obstacle,
+    double sample_time,
+    int time_steps);
 
 private:
   /// @brief Used to store observations from radar sensors
@@ -303,29 +348,27 @@ private:
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr
     dyn_params_handler_;
 
-  bool rolling_window_;
+  /// @brief Used to bound probability to include in costmap
+  double min_probability_;
+
+  /// @brief Used for projection of mean and covariance
+  int number_of_time_steps_;
+  
+  /// @brief Used for projection of mean and covariance
+  double sample_time_;
+
+  /// @brief name of global frame
+  std::string global_frame_;
+
+  ///@brief Whether to use the stamp footprint method or not
   bool stamp_footprint_;
-  bool inflate_obstacle_;
+
+  tf2::Duration transform_tolerance_;
+  bool rolling_window_;
   int combination_method_;
   double min_bound;
   double max_bound;
-  double min_probability_;
-  int number_of_time_steps_;
-  double sample_time_;
-  double inflation_radius_;
-  double cost_scaling_factor_;
-  unsigned int cell_inflation_radius_, size_x_, size_y_;
-  std::string global_frame_;
-  std::vector<std::vector<nav2_costmap_2d::CellData>> inflation_cells_;
-  std::vector<std::vector<int>> distance_matrix_;
-
-  unsigned int cache_length_;
-  unsigned int cached_cell_inflation_radius_;
-  std::vector<unsigned char> cached_costs_;
-  std::vector<double> cached_distances_;
-  std::vector<bool> seen_;
-
-  tf2::Duration transform_tolerance_;
+  
 };
 } // namespace radar_layer
 

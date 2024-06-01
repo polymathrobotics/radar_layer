@@ -50,6 +50,9 @@ include_directories(include)
 install(TARGETS ${lib_name}
         DESTINATION lib)
 
+install(DIRECTORY launch config
+  DESTINATION share/${PROJECT_NAME})
+
 # === Ament work ===
 
 if(BUILD_TESTING)
