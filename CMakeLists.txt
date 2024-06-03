@@ -41,9 +41,12 @@ set(dep_pkgs
 
 # === Build ===
 
+include_directories(include)
+
 add_library(${lib_name} SHARED
             src/radar_layer.cpp)
-include_directories(include)
+
+ament_target_dependencies(${lib_name} ${dep_pkgs})
 
 # === Installation ===
 
@@ -61,6 +64,19 @@ if(BUILD_TESTING)
   set(ament_cmake_copyright_FOUND TRUE)
   find_package(ament_lint_auto REQUIRED)
   ament_lint_auto_find_test_dependencies()
+
+  # Unit Test
+  find_package(Catch2 2 REQUIRED)
+  set(test_dependencies
+    Catch2
+  )
+  add_executable(catch_tests test/test_radar_layer.cpp)
+  target_link_libraries(catch_tests Catch2::Catch2 ${lib_name})
+  ament_target_dependencies(catch_tests
+    ${test_dependencies}
+    ${dep_pkgs}
+  )
+  add_test(NAME catch_tests COMMAND catch_tests)
 endif()
 
 # pluginlib_export_plugin_description_file() installs gradient_layer.xml
