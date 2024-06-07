@@ -140,13 +140,13 @@ public:
     obstacle.size.y = sy;
     obstacle.size.z = sz;
 
-    obstacle.position_covariance.x = cov_px;
-    obstacle.position_covariance.y = cov_py;
-    obstacle.position_covariance.z = cov_pz;
+    obstacle.position_covariance[0] = cov_px;
+    obstacle.position_covariance[4] = cov_py;
+    obstacle.position_covariance[8] = cov_pz;
 
-    obstacle.velocity_covariance.x = cov_vx;
-    obstacle.velocity_covariance.y = cov_vy;
-    obstacle.velocity_covariance.z = cov_vz;
+    obstacle.velocity_covariance[0] = cov_vx;
+    obstacle.velocity_covariance[4] = cov_vy;
+    obstacle.velocity_covariance[8] = cov_vz;
 
     obstacle_array.obstacles.push_back(obstacle);
 
