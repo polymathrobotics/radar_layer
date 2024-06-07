@@ -310,9 +310,9 @@ void RadarLayer::predictiveCost(
 
     double sqrt_2_pi_det_covariance_0 = sqrt(
       2 * M_PI *
-      (obstacle_array->obstacles[i].position_covariance.x + obstacle_array->obstacles[i].size.x /
+      (obstacle_array->obstacles[i].position_covariance[0] + obstacle_array->obstacles[i].size.x /
       2) *
-      (obstacle_array->obstacles[i].position_covariance.y + obstacle_array->obstacles[i].size.y /
+      (obstacle_array->obstacles[i].position_covariance[4] + obstacle_array->obstacles[i].size.y /
       2));
 
     for (int k = 0; k < number_of_time_steps_; ++k) {
@@ -606,20 +606,20 @@ void RadarLayer::updateGaussian(
   Eigen::Vector2d detection_velocity_mean(detection.velocity.x, detection.velocity.y);
 
   Eigen::MatrixXd obstacle_position_covariance = Eigen::MatrixXd::Zero(2, 2);
-  obstacle_position_covariance(0, 0) = obstacle.position_covariance.x;
-  obstacle_position_covariance(1, 1) = obstacle.position_covariance.y;
+  obstacle_position_covariance(0, 0) = obstacle.position_covariance[0];
+  obstacle_position_covariance(1, 1) = obstacle.position_covariance[4];
 
   Eigen::MatrixXd obstacle_velocity_covariance = Eigen::MatrixXd::Zero(2, 2);
-  obstacle_velocity_covariance(0, 0) = obstacle.velocity_covariance.x;
-  obstacle_velocity_covariance(1, 1) = obstacle.velocity_covariance.y;
+  obstacle_velocity_covariance(0, 0) = obstacle.velocity_covariance[0];
+  obstacle_velocity_covariance(1, 1) = obstacle.velocity_covariance[4];
 
   Eigen::MatrixXd detection_position_covariance = Eigen::MatrixXd::Zero(2, 2);
-  detection_position_covariance(0, 0) = detection.position_covariance.x;
-  detection_position_covariance(1, 1) = detection.position_covariance.y;
+  detection_position_covariance(0, 0) = detection.position_covariance[0];
+  detection_position_covariance(1, 1) = detection.position_covariance[4];
 
   Eigen::MatrixXd detection_velocity_covariance = Eigen::MatrixXd::Zero(2, 2);
-  detection_velocity_covariance(0, 0) = detection.velocity_covariance.x;
-  detection_velocity_covariance(1, 1) = detection.velocity_covariance.y;
+  detection_velocity_covariance(0, 0) = detection.velocity_covariance[0];
+  detection_velocity_covariance(1, 1) = detection.velocity_covariance[4];
 
   Eigen::MatrixXd R =
     (obstacle_position_covariance + dt * dt * obstacle_velocity_covariance).inverse();
@@ -638,10 +638,10 @@ void RadarLayer::updateGaussian(
   obstacle.position.y = new_position_mean(1);
   obstacle.velocity.x = new_velocity_mean(0);
   obstacle.velocity.y = new_velocity_mean(1);
-  obstacle.position_covariance.x = new_position_covariance(0, 0);
-  obstacle.position_covariance.y = new_position_covariance(1, 1);
-  obstacle.velocity_covariance.x = new_velocity_covariance(0, 0);
-  obstacle.velocity_covariance.y = new_velocity_covariance(1, 1);
+  obstacle.position_covariance[0] = new_position_covariance(0, 0);
+  obstacle.position_covariance[4] = new_position_covariance(1, 1);
+  obstacle.velocity_covariance[0] = new_velocity_covariance(0, 0);
+  obstacle.velocity_covariance[4] = new_velocity_covariance(1, 1);
 
 }
 
@@ -795,10 +795,10 @@ Eigen::MatrixXd RadarLayer::projectCovariance(
   Eigen::MatrixXd velocity_covariance(2, 2);
   Eigen::MatrixXd position_covariance_projected(2, 2);
 
-  position_covariance(0, 0) = obstacle.position_covariance.x;
-  position_covariance(1, 1) = obstacle.position_covariance.y;
-  velocity_covariance(0, 0) = obstacle.velocity_covariance.x;
-  velocity_covariance(1, 1) = obstacle.velocity_covariance.y;
+  position_covariance(0, 0) = obstacle.position_covariance[0];
+  position_covariance(1, 1) = obstacle.position_covariance[4];
+  velocity_covariance(0, 0) = obstacle.velocity_covariance[0];
+  velocity_covariance(1, 1) = obstacle.velocity_covariance[4];
 
   position_covariance_projected = position_covariance +
     pow(time_steps * sample_time, 2) * velocity_covariance;
