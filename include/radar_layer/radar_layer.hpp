@@ -363,6 +363,9 @@ private:
   /// @brief Whether to use the stamp footprint method or not
   bool stamp_footprint_;
 
+  /// @brief How much to scale the covariance the detected object
+  double covariance_scaling_factor_;
+
   tf2::Duration transform_tolerance_;
   bool rolling_window_;
   int combination_method_;

@@ -32,6 +32,7 @@ void RadarLayer::onInitialize()
   declareParameter("number_of_time_steps", rclcpp::ParameterValue(1));
   declareParameter("sample_time", rclcpp::ParameterValue(0.1));
   declareParameter("stamp_footprint", rclcpp::ParameterValue(true));
+  declareParameter("covariance_scaling_factor", rclcpp::ParameterValue(1.0));
 
   auto node = node_.lock();
 
@@ -46,6 +47,7 @@ void RadarLayer::onInitialize()
   node->get_parameter(name_ + "." + "number_of_time_steps", number_of_time_steps_);
   node->get_parameter(name_ + "." + "sample_time", sample_time_);
   node->get_parameter(name_ + "." + "stamp_footprint", stamp_footprint_);
+  node->get_parameter(name_ + "." + "covariance_scaling_factor", covariance_scaling_factor_);
   node->get_parameter("transform_tolerance", transform_tolerance);
   transform_tolerance_ = tf2::durationFromSec(transform_tolerance);
 
@@ -240,8 +242,17 @@ rcl_interfaces::msg::SetParametersResult RadarLayer::dynamicParametersCallback(
     const auto & param_name = parameter.get_name();
 
     if (param_type == ParameterType::PARAMETER_INTEGER) {
-      if (param_name == name_ + "." + "combination_method") {
+      if (param_name == name_ + "." + "combination_method" &&
+        combination_method_ != parameter.as_int())
+      {
         combination_method_ = parameter.as_int();
+      }
+    }
+    if (param_type == ParameterType::PARAMETER_DOUBLE) {
+      if (param_name == name_ + "." + "covariance_scaling_factor" &&
+        covariance_scaling_factor_ != parameter.as_double())
+      {
+        covariance_scaling_factor_ = parameter.as_double();
       }
     }
   }
@@ -311,16 +322,18 @@ void RadarLayer::predictiveCost(
     double sqrt_2_pi_det_covariance_0 = sqrt(
       2 * M_PI *
       (obstacle_array->obstacles[i].position_covariance[0] + obstacle_array->obstacles[i].size.x /
-      2) *
+      2) * covariance_scaling_factor_ *
       (obstacle_array->obstacles[i].position_covariance[4] + obstacle_array->obstacles[i].size.y /
-      2));
+      2) * covariance_scaling_factor_);
 
     for (int k = 0; k < number_of_time_steps_; ++k) {
 
       Eigen::VectorXd mean = projectMean(obstacle_array->obstacles[i], sample_time_, k);
       Eigen::MatrixXd covariance = projectCovariance(obstacle_array->obstacles[i], sample_time_, k);
-      covariance(0, 0) += obstacle_array->obstacles[i].size.x / 2;
-      covariance(1, 1) += obstacle_array->obstacles[i].size.y / 2;
+      covariance(0, 0) += obstacle_array->obstacles[i].size.x / 2; //TODO: MULTIPLY WITH HYPERPARAMETER HERE
+      covariance(1, 1) += obstacle_array->obstacles[i].size.y / 2; //TODO: MULTIPLY WITH HYPERPARAMETER HERE
+      covariance(0, 0) *= covariance_scaling_factor_;
+      covariance(1, 1) *= covariance_scaling_factor_;
       Eigen::MatrixXd inv_covariance = Eigen::MatrixXd::Zero(2, 2);
       inv_covariance(0, 0) = 1 / covariance(0, 0);
       inv_covariance(1, 1) = 1 / covariance(1, 1);
