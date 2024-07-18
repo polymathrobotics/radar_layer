@@ -8,14 +8,14 @@ This is the simplest method where a rectangle determined by the x and y size of 
 The cost is distributed as a 2D gaussian, where the centroid position is the highest cost and the cost surrounding the centroid decreases like a 2D normal distribution, based on the position covariance. To incorporate the size of the obstacle, the position covariance is extended when evaluating the probability density function as follows:
 
 $$
-\Sigma = \begin{bmatrix}
+\Sigma = \alpha(\begin{bmatrix}
 \sigma_x & 0 \\
 0 & \sigma_y
 \end{bmatrix} +
 \begin{bmatrix}
 \frac{l}{2} & 0 \\
 0 & \frac{w}{2}
-\end{bmatrix}
+\end{bmatrix})
 $$
 
 with probability density function
@@ -30,7 +30,7 @@ y-\mu_y
 \end{bmatrix}\right)}
 $$
 
-where $\sigma_x$ and $\sigma_y$ are the position covariances of x and y, respectively, $l$ and $w$ are the length and width of the obstacle respectively, and $\mu_x$ and $\mu_y$ are the means of x and y respectively. Should the radar track also have velocity, the user may choose to project the gaussian distributed costmap into the future in order to plan to avoid a moving object in the future. The original Gaussian's mean is projected forward with the velocity, and the projected covariance is spread and scaled down as a function of the velocity covariance.
+where $\alpha$ is some covariance scaling factor for tuning, $\sigma_x$ and $\sigma_y$ are the position covariances of x and y, respectively, $l$ and $w$ are the length and width of the obstacle respectively, and $\mu_x$ and $\mu_y$ are the means of x and y respectively. Should the radar track also have velocity, the user may choose to project the gaussian distributed costmap into the future in order to plan to avoid a moving object in the future. The original Gaussian's mean is projected forward with the velocity, and the projected covariance is spread and scaled down as a function of the velocity covariance.
 
 The algorithm used in this package is based on the following work:
 
@@ -58,6 +58,7 @@ This costmap layer expects the radar tracks to be published in the [ObstacleArra
 | `number_of_time_steps` | number of time steps to propogate gaussian distribution of obstacle |
 | `stamp_footprint` | Whether to use stamp footprint method or not | 
 | `sample_time` |  sample time to propogate gaussian distribution of obstacle |
+| `covariance_scaling_factor` |  A scalar to scale the covariance reported by the radar |
 | `<data source>.topic` |  Topic of data | 
 
 Example fully-described XML with default parameter values:
@@ -97,6 +98,7 @@ costmap:
         minimum_probability: 0.15
         observation_sources: "radar"
         stamp_footprint: True
+        covariance_scaling_factor: 2.0
         radar:
           topic: /tracking
 
