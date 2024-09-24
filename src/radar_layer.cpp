@@ -247,12 +247,27 @@ rcl_interfaces::msg::SetParametersResult RadarLayer::dynamicParametersCallback(
       {
         combination_method_ = parameter.as_int();
       }
+      if (param_name == name_ + "." + "number_of_time_steps" &&
+        number_of_time_steps_ != parameter.as_int())
+      {
+        number_of_time_steps_ = parameter.as_int();
+      }
     }
     if (param_type == ParameterType::PARAMETER_DOUBLE) {
       if (param_name == name_ + "." + "covariance_scaling_factor" &&
         covariance_scaling_factor_ != parameter.as_double())
       {
         covariance_scaling_factor_ = parameter.as_double();
+      }
+      if (param_name == name_ + "." + "sample_time" &&
+        sample_time_  != parameter.as_double())
+      {
+        sample_time_ = parameter.as_double();
+      }
+      if (param_name == name_ + "." + "minimum_probability" &&
+        min_probability_ != parameter.as_double())
+      {
+        min_probability_ = parameter.as_double();
       }
     }
   }
@@ -328,6 +343,7 @@ void RadarLayer::predictiveCost(
 
     for (int k = 0; k < number_of_time_steps_; ++k) {
 
+
       Eigen::VectorXd mean = projectMean(obstacle_array->obstacles[i], sample_time_, k);
       Eigen::MatrixXd covariance = projectCovariance(obstacle_array->obstacles[i], sample_time_, k);
       covariance(0, 0) += obstacle_array->obstacles[i].size.x / 2; //TODO: MULTIPLY WITH HYPERPARAMETER HERE
@@ -392,11 +408,7 @@ void RadarLayer::predictiveCost(
                   y_index[j]) * sqrt_2_pi_det_covariance_0 > min_probability_)
               {
                 costmap_[index] =
-                  std::max(
-                  current_cost,
-                  uint8_t(
-                    LETHAL_OBSTACLE *
-                    probabilities(x_index[j], y_index[j]) * sqrt_2_pi_det_covariance_0));
+                  std::min(uint8_t(252), std::max(current_cost, uint8_t(LETHAL_OBSTACLE * probabilities(x_index[j], y_index[j]) * sqrt_2_pi_det_covariance_0)));
               }
             }
           }
