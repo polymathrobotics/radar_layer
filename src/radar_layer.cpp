@@ -57,6 +57,8 @@ void RadarLayer::onInitialize()
 
   default_value_ = nav2_costmap_2d::FREE_SPACE;
 
+  current_ = true;
+
   RadarLayer::matchSize();
 
   auto sub_opt = rclcpp::SubscriptionOptions();
@@ -201,6 +203,8 @@ void RadarLayer::updateCosts(
     default: // Nothing
       break;
   }
+
+  current_ = true;
 }
 
 void RadarLayer::activate()
@@ -587,13 +591,12 @@ void RadarLayer::removeUnmatchedObstacles(
     matched_indices, false);
 
   if (unmatched_obstacles.size() > 0) {
-    RCLCPP_DEBUG(logger_, "Unmatched Obstacles Found");
     std::vector<size_t> sorted_unmatched_obstacles = unmatched_obstacles;
     std::sort(
       sorted_unmatched_obstacles.begin(), sorted_unmatched_obstacles.end(),
       std::greater<size_t>());
-    for (size_t i = 0; i < sorted_unmatched_obstacles.size(); i++) {
-      obstacles->obstacles.erase(obstacles->obstacles.begin() + i);
+    for (size_t index : sorted_unmatched_obstacles) {
+      obstacles->obstacles.erase(obstacles->obstacles.begin() + index);
     }
   }
 
