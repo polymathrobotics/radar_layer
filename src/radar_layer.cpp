@@ -57,6 +57,8 @@ void RadarLayer::onInitialize()
 
   default_value_ = nav2_costmap_2d::FREE_SPACE;
 
+  current_ = true;
+
   RadarLayer::matchSize();
 
   auto sub_opt = rclcpp::SubscriptionOptions();
@@ -201,6 +203,8 @@ void RadarLayer::updateCosts(
     default: // Nothing
       break;
   }
+
+  current_ = true;
 }
 
 void RadarLayer::activate()
@@ -247,12 +251,27 @@ rcl_interfaces::msg::SetParametersResult RadarLayer::dynamicParametersCallback(
       {
         combination_method_ = parameter.as_int();
       }
+      if (param_name == name_ + "." + "number_of_time_steps" &&
+        number_of_time_steps_ != parameter.as_int())
+      {
+        number_of_time_steps_ = parameter.as_int();
+      }
     }
     if (param_type == ParameterType::PARAMETER_DOUBLE) {
       if (param_name == name_ + "." + "covariance_scaling_factor" &&
         covariance_scaling_factor_ != parameter.as_double())
       {
         covariance_scaling_factor_ = parameter.as_double();
+      }
+      if (param_name == name_ + "." + "sample_time" &&
+        sample_time_  != parameter.as_double())
+      {
+        sample_time_ = parameter.as_double();
+      }
+      if (param_name == name_ + "." + "minimum_probability" &&
+        min_probability_ != parameter.as_double())
+      {
+        min_probability_ = parameter.as_double();
       }
     }
   }
@@ -312,99 +331,227 @@ void RadarLayer::predictiveCost(
   double x_y;
   double y_x;
   double y_y;
+  double inv_x_x;
+  double inv_x_y;
+  double inv_y_x;
+  double inv_y_y;
+  
 
   getTransformCoefficients(
     global_frame_, obstacle_array->header.frame_id, dx, dy, x_x, x_y, y_x,
-    y_y);
+    y_y, inv_x_x, inv_x_y, inv_y_x, inv_y_y);
 
   for (size_t i = 0; i < number_of_objects; i++) {
 
-    double sqrt_2_pi_det_covariance_0 = sqrt(
-      2 * M_PI *
-      (obstacle_array->obstacles[i].position_covariance[0] + obstacle_array->obstacles[i].size.x /
-      2) * covariance_scaling_factor_ *
-      (obstacle_array->obstacles[i].position_covariance[4] + obstacle_array->obstacles[i].size.y /
-      2) * covariance_scaling_factor_);
+    nav2_dynamic_msgs::msg::Obstacle obstacle_0 = obstacle_array->obstacles[i];
+
+    double sqrt_2_pi_det_covariance_0 = sqrt(2 * M_PI *
+      (obstacle_0.position_covariance[0] + obstacle_0.size.x /
+      2) *
+      (obstacle_0.position_covariance[4] + obstacle_0.size.y /
+      2));
 
     for (int k = 0; k < number_of_time_steps_; ++k) {
 
-      Eigen::VectorXd mean = projectMean(obstacle_array->obstacles[i], sample_time_, k);
-      Eigen::MatrixXd covariance = projectCovariance(obstacle_array->obstacles[i], sample_time_, k);
-      covariance(0, 0) += obstacle_array->obstacles[i].size.x / 2; //TODO: MULTIPLY WITH HYPERPARAMETER HERE
-      covariance(1, 1) += obstacle_array->obstacles[i].size.y / 2; //TODO: MULTIPLY WITH HYPERPARAMETER HERE
-      covariance(0, 0) *= covariance_scaling_factor_;
-      covariance(1, 1) *= covariance_scaling_factor_;
-      Eigen::MatrixXd inv_covariance = Eigen::MatrixXd::Zero(2, 2);
+      if (seen_.size() != size_x_ * size_y_) {
+        RCLCPP_WARN(logger_, "InflationLayer::updateCosts(): seen_ vector size is wrong");
+        seen_ = std::vector<bool>(size_x_ * size_y_, false);
+      }
+
+      std::fill(begin(seen_), end(seen_), false);
+
+
+      Eigen::Vector2d mean = projectMean(obstacle_0, sample_time_, k);
+      Eigen::Matrix2d covariance = projectCovariance(obstacle_0, sample_time_, k);
+      covariance(0, 0) += obstacle_0.size.x / 2; //TODO: MULTIPLY WITH HYPERPARAMETER HERE
+      covariance(1, 1) += obstacle_0.size.y / 2; //TODO: MULTIPLY WITH HYPERPARAMETER HERE
+
+      Eigen::Matrix2d inv_covariance = Eigen::MatrixXd::Zero(2, 2);
       inv_covariance(0, 0) = 1 / covariance(0, 0);
       inv_covariance(1, 1) = 1 / covariance(1, 1);
 
       double sqrt_2_pi_det_covariance = sqrt(2 * M_PI * covariance(0, 0) * covariance(1, 1));
       double covariance_ratio = sqrt_2_pi_det_covariance_0 / sqrt_2_pi_det_covariance;
 
-      if (covariance_ratio < min_probability_) {
-        RCLCPP_DEBUG(logger_, "projected mean too small, breaking");
-        break;
-      } else {
-        double length = 2 *
-          sqrt(-2 * (log(min_probability_) - log(covariance_ratio)) * covariance(0, 0)); //these should act more like the limits of the search
-        double width = 2 *
-          sqrt(-2 * (log(min_probability_) - log(covariance_ratio)) * covariance(1, 1)); //these should act more like the limits of the search
-        int length_in_grid = int(length / resolution_);
-        int width_in_grid = int(width / resolution_);
+      double length = 2 * sqrt(-2 * (log(min_probability_) - log(covariance_ratio)) * covariance(0, 0)); //these should act more like the limits of the search
+      double width = 2 * sqrt(-2 * (log(min_probability_) - log(covariance_ratio)) * covariance(1, 1)); //these should act more like the limits of the search
+      int length_in_grid = int(length / resolution_);
+      int width_in_grid = int(width / resolution_);
+      mean_inflation_radius_ = std::max(length_in_grid, width_in_grid);
 
-        Eigen::MatrixXd xs(length_in_grid, width_in_grid);
-        Eigen::MatrixXd ys(length_in_grid, width_in_grid);
-        std::vector<geometry_msgs::msg::PointStamped> points_in_obstacle_frame(length_in_grid *
-          width_in_grid);
-        std::vector<geometry_msgs::msg::PointStamped> points_in_global_frame(length_in_grid *
-          width_in_grid);
-        std::vector<int> x_index(length_in_grid * width_in_grid);
-        std::vector<int> y_index(length_in_grid * width_in_grid);
+      inflation_cells_.clear();
+      int max_dist = generateIntegerDistances();
+      inflation_cells_.resize(max_dist+1);
+      geometry_msgs::msg::PointStamped mean_in_global_frame;
+      
+      mean_in_global_frame.header.stamp = obstacle_array->header.stamp;
+      mean_in_global_frame.header.frame_id = global_frame_;
+      mean_in_global_frame.point.x = mean(0) * x_x + mean(1) * y_x + dx;
+      mean_in_global_frame.point.y = mean(0) * x_y + mean(1) * y_y + dy;
+      mean_in_global_frame.point.z = 0;
 
-        populateGrid(
-          mean(0), mean(
-            1), length, width, points_in_obstacle_frame, xs, ys, x_index, y_index,
-          obstacle_array);
+      auto & mean_bin = inflation_cells_[0];
+      mean_bin.reserve(200);
+      unsigned int mean_x_index, mean_y_index;
+      if(worldToMap(mean_in_global_frame.point.x, mean_in_global_frame.point.y, mean_x_index, mean_y_index)){;
+        unsigned int index = getIndex(mean_x_index, mean_y_index);
+        mean_bin.emplace_back(mean_x_index, mean_y_index, mean_x_index, mean_y_index);
+      }
 
-        bool batch_transform_success = batchTransform2DPoints(
-          x_x, x_y, y_x, y_y, dx, dy,
-          points_in_obstacle_frame,
-          points_in_global_frame, global_frame_,
-          transform_tolerance_);
+      double mean_x_in_global_frame, mean_y_in_global_frame;
+      mapToWorld(mean_x_index, mean_y_index, mean_x_in_global_frame, mean_y_in_global_frame);
 
-        Eigen::MatrixXd probabilities = getProbabilityBatch(
-          mean, inv_covariance,
-          sqrt_2_pi_det_covariance, xs, ys);
+      double mean_dx =  mean_x_in_global_frame - dx;
+      double mean_dy =  mean_y_in_global_frame - dy; 
+      
+      double mean_x_in_sensor_frame = mean_dx * inv_x_x + mean_dy * inv_y_x;
+      double mean_y_in_sensor_frame = mean_dx * inv_x_y + mean_dy * inv_y_y;
+      Eigen::Vector2d mean_in_sensor_frame(mean_x_in_sensor_frame, mean_y_in_sensor_frame);
 
-        if (batch_transform_success) {
-          for (size_t j = 0; j < points_in_global_frame.size(); j++) {
-            unsigned int mx, my;
+      int level = 0;
+      for (auto & dist_bin : inflation_cells_) {
+        dist_bin.reserve(200);
+        level++;
+        for (std::size_t i = 0; i < dist_bin.size(); ++i) {
+          // Do not use iterator or for-range based loops to
+          // iterate though dist_bin, since it's size might
+          // change when a new cell is enqueued, invalidating all iterators
+          const CellData & cell = dist_bin[i];
+          unsigned int mx = cell.x_;
+          unsigned int my = cell.y_;
+          unsigned int sx = cell.src_x_;
+          unsigned int sy = cell.src_y_;
+          unsigned int index = getIndex(mx, my);
 
-            if (worldToMap(
-                points_in_global_frame[j].point.x, points_in_global_frame[j].point.y, mx,
-                my))
-            {
-              unsigned int index = getIndex(mx, my);
-              uint8_t current_cost = costmap_[index];
+          // ignore if already visited
+          if (seen_[index]) {
+            continue;
+          }
 
-              if (probabilities(
-                  x_index[j],
-                  y_index[j]) * sqrt_2_pi_det_covariance_0 > min_probability_)
-              {
-                costmap_[index] =
-                  std::max(
-                  current_cost,
-                  uint8_t(
-                    LETHAL_OBSTACLE *
-                    probabilities(x_index[j], y_index[j]) * sqrt_2_pi_det_covariance_0));
-              }
+          seen_[index] = true;
+
+          double inflation_x_in_global_frame, inflation_y_in_global_frame;
+          
+          mapToWorld(mx, my, inflation_x_in_global_frame, inflation_y_in_global_frame);
+
+          double inflation_dx =  inflation_x_in_global_frame - dx;
+          double inflation_dy =  inflation_y_in_global_frame - dy; 
+          
+          double inflation_x_in_sensor_frame = inflation_dx * inv_x_x + inflation_dy * inv_y_x;
+          double inflation_y_in_sensor_frame = inflation_dx * inv_x_y + inflation_dy * inv_y_y;
+
+          unsigned char cost = uint8_t(252 * sqrt_2_pi_det_covariance_0 * getProbability(inv_covariance, sqrt_2_pi_det_covariance, mean_in_sensor_frame, inflation_x_in_sensor_frame, inflation_y_in_sensor_frame));
+          if(cost > min_probability_){
+            unsigned char old_cost = costmap_[index];
+            costmap_[index] = std::max(old_cost, cost);
+
+            // attempt to put the neighbors of the current cell onto the inflation list
+            if (mx > 0) {
+              enqueue(index - 1, mx - 1, my, sx, sy);
             }
+            if (my > 0) {
+              enqueue(index - size_x_, mx, my - 1, sx, sy);
+            }
+            if (mx < size_x_ - 1) {
+              enqueue(index + 1, mx + 1, my, sx, sy);
+            }
+            if (my < size_y_ - 1) {
+              enqueue(index + size_x_, mx, my + 1, sx, sy);
+            }
+
           }
         }
+        // This level of inflation_cells_ is not needed anymore. We can free the memory
+        // Note that dist_bin.clear() is not enough, because it won't free the memory
+        dist_bin = std::vector<CellData>();
       }
     }
   }
 }
+
+int RadarLayer::generateIntegerDistances()
+{
+  const int r = mean_inflation_radius_ + 2;
+  const int size = r * 2 + 1;
+
+  std::vector<std::pair<int, int>> points;
+
+  for (int y = -r; y <= r; y++) {
+    for (int x = -r; x <= r; x++) {
+      if (x * x + y * y <= r * r) {
+        points.emplace_back(x, y);
+      }
+    }
+  }
+
+  std::sort(
+    points.begin(), points.end(),
+    [](const std::pair<int, int> & a, const std::pair<int, int> & b) -> bool {
+      return a.first * a.first + a.second * a.second < b.first * b.first + b.second * b.second;
+    }
+  );
+
+  std::vector<std::vector<int>> distance_matrix(size, std::vector<int>(size, 0));
+  std::pair<int, int> last = {0, 0};
+  int level = 0;
+  for (auto const & p : points) {
+
+    if (p.first * p.first + p.second * p.second != last.first * last.first + last.second * last.second)
+    {
+      level++;
+    }
+
+    distance_matrix[p.first + r][p.second + r] = level;
+    last = p;
+
+  }
+
+  distance_matrix_ = distance_matrix;
+  return level;
+}
+
+void RadarLayer::enqueue(
+  unsigned int index, unsigned int mx, unsigned int my,
+  unsigned int src_x, unsigned int src_y){
+    const unsigned int r = mean_inflation_radius_ + 2;
+    const auto dist = distance_matrix_[mx - src_x + r][my - src_y + r];
+    inflation_cells_[dist].emplace_back(mx, my, src_x, src_y);
+  }
+
+
+// void RadarLayer::computeCaches()
+// {
+//   std::lock_guard<Costmap2D::mutex_t> guard(*getMutex());
+//   if (cell_inflation_radius_ == 0) {
+//     return;
+//   }
+
+//   cache_length_ = cell_inflation_radius_ + 2;
+
+//   // based on the inflation radius... compute distance and cost caches
+//   if (cell_inflation_radius_ != cached_cell_inflation_radius_) {
+//     cached_costs_.resize(cache_length_ * cache_length_);
+//     cached_distances_.resize(cache_length_ * cache_length_);
+
+//     for (unsigned int i = 0; i < cache_length_; ++i) {
+//       for (unsigned int j = 0; j < cache_length_; ++j) {
+//         cached_distances_[i * cache_length_ + j] = hypot(i, j);
+//       }
+//     }
+
+//     cached_cell_inflation_radius_ = cell_inflation_radius_;
+//   }
+
+//   for (unsigned int i = 0; i < cache_length_; ++i) {
+//     for (unsigned int j = 0; j < cache_length_; ++j) {
+//       cached_costs_[i * cache_length_ + j] = computeCost(cached_distances_[i * cache_length_ + j]);
+//     }
+//   }
+
+//   int max_dist = generateIntegerDistances();
+//   inflation_cells_.clear();
+//   inflation_cells_.resize(max_dist + 1);
+// }
 
 void RadarLayer::stampFootprint(
   nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr obstacle_array, int number_of_objects)
@@ -418,10 +565,15 @@ void RadarLayer::stampFootprint(
   double x_y;
   double y_x;
   double y_y;
+  double inv_x_x;
+  double inv_x_y;
+  double inv_y_x;
+  double inv_y_y;
+  
 
   getTransformCoefficients(
     global_frame_, obstacle_array->header.frame_id, dx, dy, x_x, x_y, y_x,
-    y_y);
+    y_y, inv_x_x, inv_x_y, inv_y_x, inv_y_y);
 
   for (size_t i = 0; i < number_of_objects; i++) {
     double length = obstacle_array->obstacles[i].size.x;
@@ -475,7 +627,7 @@ void RadarLayer::stampFootprint(
 void RadarLayer::getTransformCoefficients(
   std::string source_frame,
   std::string target_frame, double & dx, double & dy, double & x_x, double & x_y, double & y_x,
-  double & y_y)
+  double & y_y, double & inv_x_x, double & inv_x_y, double & inv_y_x, double & inv_y_y)
 {
   geometry_msgs::msg::TransformStamped transform;
   transform = tf_->lookupTransform(
@@ -509,6 +661,19 @@ void RadarLayer::getTransformCoefficients(
 
   y_x = cos_yaw * sin_pitch * sin_roll - sin_yaw * cos_roll;
   y_y = sin_yaw * sin_pitch * sin_roll + cos_yaw * cos_roll;
+
+  Eigen::MatrixXd rotation_matrix = Eigen::MatrixXd::Zero(2, 2);
+  rotation_matrix(0, 0) = x_x;
+  rotation_matrix(0, 1) = x_y;
+  rotation_matrix(1, 0) = y_x;
+  rotation_matrix(1, 1) = y_y;
+
+  Eigen::MatrixXd inverse_rotation_matrix = rotation_matrix.inverse();
+  inv_x_x = inverse_rotation_matrix(0, 0);
+  inv_x_y = inverse_rotation_matrix(0, 1);
+  inv_y_x = inverse_rotation_matrix(1, 0);
+  inv_y_y = inverse_rotation_matrix(1, 1);
+
 }
 
 void RadarLayer::obstacleCallback(
@@ -575,13 +740,12 @@ void RadarLayer::removeUnmatchedObstacles(
     matched_indices, false);
 
   if (unmatched_obstacles.size() > 0) {
-    RCLCPP_DEBUG(logger_, "Unmatched Obstacles Found");
     std::vector<size_t> sorted_unmatched_obstacles = unmatched_obstacles;
     std::sort(
       sorted_unmatched_obstacles.begin(), sorted_unmatched_obstacles.end(),
       std::greater<size_t>());
-    for (size_t i = 0; i < sorted_unmatched_obstacles.size(); i++) {
-      obstacles->obstacles.erase(obstacles->obstacles.begin() + i);
+    for (size_t index : sorted_unmatched_obstacles) {
+      obstacles->obstacles.erase(obstacles->obstacles.begin() + index);
     }
   }
 
@@ -619,16 +783,16 @@ void RadarLayer::updateGaussian(
   Eigen::Vector2d detection_velocity_mean(detection.velocity.x, detection.velocity.y);
 
   Eigen::MatrixXd obstacle_position_covariance = Eigen::MatrixXd::Zero(2, 2);
-  obstacle_position_covariance(0, 0) = obstacle.position_covariance[0];
-  obstacle_position_covariance(1, 1) = obstacle.position_covariance[4];
+  obstacle_position_covariance(0, 0) = obstacle.position_covariance[0];//*covariance_scaling_factor_;
+  obstacle_position_covariance(1, 1) = obstacle.position_covariance[4];//*covariance_scaling_factor_;
 
   Eigen::MatrixXd obstacle_velocity_covariance = Eigen::MatrixXd::Zero(2, 2);
   obstacle_velocity_covariance(0, 0) = obstacle.velocity_covariance[0];
   obstacle_velocity_covariance(1, 1) = obstacle.velocity_covariance[4];
 
   Eigen::MatrixXd detection_position_covariance = Eigen::MatrixXd::Zero(2, 2);
-  detection_position_covariance(0, 0) = detection.position_covariance[0];
-  detection_position_covariance(1, 1) = detection.position_covariance[4];
+  detection_position_covariance(0, 0) = detection.position_covariance[0];//*covariance_scaling_factor_;
+  detection_position_covariance(1, 1) = detection.position_covariance[4];//#*covariance_scaling_factor_;
 
   Eigen::MatrixXd detection_velocity_covariance = Eigen::MatrixXd::Zero(2, 2);
   detection_velocity_covariance(0, 0) = detection.velocity_covariance[0];
@@ -695,13 +859,12 @@ Eigen::MatrixXd RadarLayer::getProbabilityBatch(
 }
 
 
-double RadarLayer::getProbabilty(
-  const Eigen::MatrixXd & mean,
-  const Eigen::MatrixXd & inv_covariance,
+double RadarLayer::getProbability(
+  const Eigen::Matrix2d & inv_covariance,
   double & sqrt_2_pi_det_covariance,
-  double x, double y)
+  const Eigen::Vector2d &mean,
+  double & x, double & y)
 {
-
   Eigen::Vector2d input(x, y);
   Eigen::Vector2d difference = input - mean;
   double b = difference.transpose() * inv_covariance * difference;
@@ -778,7 +941,7 @@ bool RadarLayer::batchTransformPoints(
   return all_transformed;
 }
 
-Eigen::VectorXd RadarLayer::projectMean(
+Eigen::Vector2d RadarLayer::projectMean(
   nav2_dynamic_msgs::msg::Obstacle obstacle,
   double sample_time,
   int time_steps
@@ -798,7 +961,7 @@ Eigen::VectorXd RadarLayer::projectMean(
   return position_projected;
 }
 
-Eigen::MatrixXd RadarLayer::projectCovariance(
+Eigen::Matrix2d RadarLayer::projectCovariance(
   nav2_dynamic_msgs::msg::Obstacle obstacle,
   double sample_time,
   int time_steps
@@ -812,6 +975,12 @@ Eigen::MatrixXd RadarLayer::projectCovariance(
   position_covariance(1, 1) = obstacle.position_covariance[4];
   velocity_covariance(0, 0) = obstacle.velocity_covariance[0];
   velocity_covariance(1, 1) = obstacle.velocity_covariance[4];
+
+          
+  if(velocity_covariance(0, 0) < 0 || velocity_covariance(1, 1) < 0){
+    RCLCPP_INFO(logger_, "NEGATIVE VELOCITY COVARIANCE");
+  }        
+
 
   position_covariance_projected = position_covariance +
     pow(time_steps * sample_time, 2) * velocity_covariance;
