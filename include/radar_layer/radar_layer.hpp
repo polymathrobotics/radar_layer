@@ -28,6 +28,25 @@ namespace radar_layer
  * @brief Takes in radar data to populate into 2D costmap
  */
 
+class CellData
+{
+public:
+  /**
+   * @brief  Constructor for a CellData objects
+   * @param  x The x coordinate of the cell in the cost map
+   * @param  y The y coordinate of the cell in the cost map
+   * @param  sx The x coordinate of the mean cell in the costmap
+   * @param  sy The y coordinate of the mean cell in the costmap
+   * @return
+   */
+  CellData(unsigned int x, unsigned int y, unsigned int sx, unsigned int sy)
+  : x_(x), y_(y), src_x_(sx), src_y_(sy)
+  {
+  }
+  unsigned int x_, y_;
+  unsigned int src_x_, src_y_;
+};
+
 class RadarLayer : public nav2_costmap_2d::CostmapLayer
 {
 public:
@@ -184,11 +203,11 @@ public:
    * @param x x coordinate of interest
    * @param y y coordinate of interest
    */
-  double getProbabilty(
-    const Eigen::MatrixXd & mean,
-    const Eigen::MatrixXd & inv_covariance,
+  double getProbability(
+    const Eigen::Matrix2d & inv_covariance,
     double & sqrt_2_pi_det_covariance,
-    double x, double y);
+    const Eigen::Vector2d &mean,
+    double & x, double & y);
 
   /**
    * @brief A function to transform a group of points into another frame
@@ -274,7 +293,11 @@ public:
     double & x_x,
     double & x_y,
     double & y_x,
-    double & y_y);
+    double & y_y,
+    double & inv_x_x,
+    double & inv_x_y,
+    double & inv_y_x,
+    double & inv_y_y);
 
   /**
    * @brief A function to populate vectors to evaluate gaussian distributions of obstacles
@@ -307,7 +330,7 @@ public:
    * @param sample_time sample time to project mean
    * @param time_steps number of timesteps to project mean
    */
-  Eigen::VectorXd projectMean(
+  Eigen::Vector2d projectMean(
     nav2_dynamic_msgs::msg::Obstacle obstacle,
     double sample_time,
     int time_steps);
@@ -318,10 +341,19 @@ public:
    * @param sample_time sample time to project covariance
    * @param time_steps number of timesteps to project covariance
    */
-  Eigen::MatrixXd projectCovariance(
+  Eigen::Matrix2d projectCovariance(
     nav2_dynamic_msgs::msg::Obstacle obstacle,
     double sample_time,
     int time_steps);
+
+  /**
+   * @brief Enqueue new cells in cache distance update search
+   */
+  void enqueue(
+    unsigned int index, unsigned int mx, unsigned int my,
+    unsigned int src_x, unsigned int src_y);
+
+  int generateIntegerDistances();
 
 private:
   /// @brief Used to store observations from radar sensors
@@ -371,6 +403,11 @@ private:
   int combination_method_;
   double min_bound;
   double max_bound;
+  std::vector<bool> seen_;
+  unsigned int mean_inflation_radius_;
+  std::vector<std::vector<CellData>> inflation_cells_;
+  std::vector<std::vector<int>> distance_matrix_;
+
 };
 } // namespace radar_layer
 
