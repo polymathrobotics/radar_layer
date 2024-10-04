@@ -203,9 +203,9 @@ public:
    * @param x x coordinate of interest
    * @param y y coordinate of interest
    */
-  double getProbability(
+  inline double getProbability(
     const Eigen::Matrix2d & inv_covariance,
-    double & sqrt_2_pi_det_covariance,
+    double & inv_sqrt_2_pi_det_covariance,
     const Eigen::Vector2d &mean,
     double & x, double & y);
 
@@ -250,11 +250,11 @@ public:
    * @param ys vector of y coordinates of interest
    */
   Eigen::MatrixXd getProbabilityBatch(
-    const Eigen::VectorXd & mean,
-    const Eigen::MatrixXd & inv_covariance,
-    double sqrt_2_pi_det_covariance,
-    const Eigen::MatrixXd & xs,
-    const Eigen::MatrixXd & ys);
+    const Eigen::Vector2d & mean,
+    const Eigen::Matrix2d & inv_covariance,
+    double inv_sqrt_2_pi_det_covariance,
+    const Eigen::VectorXd & xs,
+    const Eigen::VectorXd & ys);
 
   /**
    * @brief A function to populate costmap using gaussian projection
@@ -355,6 +355,8 @@ public:
 
   int generateIntegerDistances();
 
+  void computeCacheCosts(Eigen::MatrixXd inv_covariance, double & inv_sqrt_2_pi_det_covariance, double & sqrt_2_pi_det_covariance_0);
+
 private:
   /// @brief Used to store observations from radar sensors
   std::vector<std::shared_ptr<radar_msgs::msg::RadarTracks>>
@@ -407,6 +409,7 @@ private:
   unsigned int mean_inflation_radius_;
   std::vector<std::vector<CellData>> inflation_cells_;
   std::vector<std::vector<int>> distance_matrix_;
+  std::vector<std::vector<unsigned char>> cost_matrix_;
 
 };
 } // namespace radar_layer
