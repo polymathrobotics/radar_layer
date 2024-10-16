@@ -807,8 +807,8 @@ void RadarLayer::updateGaussian(
   obstacle_velocity_covariance_inv(1, 1) = 1 / obstacle.velocity_covariance[4];
 
   Eigen::Matrix2d detection_position_covariance = Eigen::MatrixXd::Zero(2, 2);
-  detection_position_covariance(0, 0) = detection.position_covariance[0];//*covariance_scaling_factor_;
-  detection_position_covariance(1, 1) = detection.position_covariance[4];//#*covariance_scaling_factor_;
+  detection_position_covariance(0, 0) = detection.position_covariance[0]*0.01;//*covariance_scaling_factor_;
+  detection_position_covariance(1, 1) = detection.position_covariance[4]*0.01;//#*covariance_scaling_factor_;
 
   Eigen::Matrix2d detection_position_covariance_inv = Eigen::MatrixXd::Zero(2, 2);
   detection_position_covariance_inv(0, 0) = 1 / detection_position_covariance(0, 0);
