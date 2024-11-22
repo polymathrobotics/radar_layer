@@ -16,17 +16,17 @@
 #include <Eigen/Dense>
 #include <cmath>
 
-using nav2_costmap_2d::LETHAL_OBSTACLE;
 using nav2_costmap_2d::INSCRIBED_INFLATED_OBSTACLE;
+using nav2_costmap_2d::LETHAL_OBSTACLE;
 using nav2_costmap_2d::NO_INFORMATION;
 using rcl_interfaces::msg::ParameterType;
 
 namespace radar_layer
 {
 /**
- * @class RadarLayer
- * @brief Takes in radar data to populate into 2D costmap
- */
+   * @class RadarLayer
+   * @brief Takes in radar data to populate into 2D costmap
+   */
 
 class CellData
 {
@@ -206,7 +206,7 @@ public:
   inline double getProbability(
     const Eigen::Matrix2d & inv_covariance,
     double & inv_sqrt_2_pi_det_covariance,
-    const Eigen::Vector2d &mean,
+    const Eigen::Vector2d & mean,
     double & x, double & y);
 
   /**
@@ -355,12 +355,15 @@ public:
 
   int generateIntegerDistances();
 
-  void computeCacheCosts(Eigen::MatrixXd inv_covariance, double & inv_sqrt_2_pi_det_covariance, double & sqrt_2_pi_det_covariance_0);
+  void computeCacheCosts(
+    Eigen::MatrixXd inv_covariance, double & inv_sqrt_2_pi_det_covariance,
+    double & sqrt_2_pi_det_covariance_0);
+
+  rmw_time_t convertHzToRmwTimeS(double qos_deadline_hz);
 
 private:
   /// @brief Used to store observations from radar sensors
-  std::vector<std::shared_ptr<radar_msgs::msg::RadarTracks>>
-  radar_observation_buffers_;
+  std::vector<std::shared_ptr<radar_msgs::msg::RadarTracks>> radar_observation_buffers_;
 
   /// @brief Used to store observations from obstackle tracking
   std::vector<std::shared_ptr<nav2_dynamic_msgs::msg::ObstacleArray>>
@@ -410,8 +413,7 @@ private:
   std::vector<std::vector<CellData>> inflation_cells_;
   std::vector<std::vector<int>> distance_matrix_;
   std::vector<std::vector<unsigned char>> cost_matrix_;
-
 };
 } // namespace radar_layer
 
-#endif  // RADAR_LAYER_HPP_
+#endif // RADAR_LAYER_HPP_

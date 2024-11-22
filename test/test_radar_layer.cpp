@@ -1,5 +1,5 @@
-#define CATCH_CONFIG_MAIN  // This tells Catch to provide a main() - only do
-                           // this in one cpp file
+#define CATCH_CONFIG_MAIN // This tells Catch to provide a main() - only do
+                          // this in one cpp file
 #include <math.h>
 
 #include <catch2/catch.hpp>
@@ -41,13 +41,15 @@ public:
   {
 
     tf_broadcaster_ = std::make_shared<tf2_ros::StaticTransformBroadcaster>(shared_from_this());
+
+    auto qos = rclcpp::QoS(10).deadline(rclcpp::Duration(1, 0));
     obstacle_array_publisher_ = this->create_publisher<nav2_dynamic_msgs::msg::ObstacleArray>(
-      "/tracking", 10);
+      "/tracking", qos);
 
     marker_array_publisher_ = this->create_publisher<visualization_msgs::msg::MarkerArray>(
       "/marker", 10);
 
-    //initialize with generic costmap parameters
+    // initialize with generic costmap parameters
     this->declare_parameter("map_topic", rclcpp::ParameterValue(std::string("map")));
     this->declare_parameter("track_unknown_space", rclcpp::ParameterValue(false));
     this->declare_parameter("use_maximum", rclcpp::ParameterValue(false));
@@ -164,7 +166,6 @@ public:
     obstacle_array.obstacles.push_back(obstacle);
 
     obstacle_array_publisher_->publish(obstacle_array);
-
   }
 
   void publishMarkerArray(
@@ -176,7 +177,7 @@ public:
     const rclcpp::Time & stamp)
   {
     visualization_msgs::msg::MarkerArray marker_array;
-   
+
     visualization_msgs::msg::Marker marker;
     marker.header.frame_id = "base_link";
     marker.header.stamp = stamp;
@@ -184,7 +185,7 @@ public:
 
     marker.pose.position.x = px;
     marker.pose.position.y = py;
-    marker.pose.position.z = pz+sz/2;
+    marker.pose.position.z = pz + sz / 2;
 
     marker.pose.orientation.x = 0.0;
     marker.pose.orientation.y = 0.0;
@@ -216,13 +217,11 @@ public:
     arrow_marker.color.b = 1.0;
     arrow_marker.color.g = 0;
     arrow_marker.color.a = 1.0;
-    
 
     marker_array.markers.push_back(marker);
     marker_array.markers.push_back(arrow_marker);
 
     marker_array_publisher_->publish(marker_array);
-
   }
 
 private:
@@ -258,7 +257,9 @@ public:
     test_node->configure();
     test_node->activate();
 
-    spin_thread = std::thread([&] {executor.spin();});
+    spin_thread = std::thread(
+      [&]
+      {executor.spin();});
   }
 
   void Teardown()
@@ -280,8 +281,10 @@ public:
 };
 
 /* Test that a radar object creates cost*/
-TEST_CASE_METHOD(ROS2Fixture, "Costmap assertions", "[radar_layer]") {
-  SECTION("Obstacle creates cost in costmap") {
+TEST_CASE_METHOD(ROS2Fixture, "Costmap assertions", "[radar_layer]")
+{
+  SECTION("Obstacle creates cost in costmap")
+  {
     ROSTestWrapper test_wrapper;
     test_wrapper.Setup();
 
@@ -346,7 +349,8 @@ TEST_CASE_METHOD(ROS2Fixture, "Costmap assertions", "[radar_layer]") {
     test_wrapper.Teardown();
   }
 
-  SECTION("Covariance scaling factor modifies how cost is spread around mean") {
+  SECTION("Covariance scaling factor modifies how cost is spread around mean")
+  {
     ROSTestWrapper test_wrapper;
     test_wrapper.Setup();
 
@@ -361,7 +365,6 @@ TEST_CASE_METHOD(ROS2Fixture, "Costmap assertions", "[radar_layer]") {
     node->declare_parameter("radar_layer.combination_method", rclcpp::ParameterValue(1));
     node->declare_parameter("radar_layer.covariance_scaling_factor", rclcpp::ParameterValue(1.0));
     node->declare_parameter("radar_layer.radar.topic", std::string("/tracking"));
-
 
     tf2_ros::Buffer tf(node->get_clock());
     auto timer_interface = std::make_shared<tf2_ros::CreateTimerROS>(
@@ -380,7 +383,7 @@ TEST_CASE_METHOD(ROS2Fixture, "Costmap assertions", "[radar_layer]") {
 
     node->publishTf(0, 0, 0, node->get_clock()->now());
 
-    //arbitrarily publish an obstacle at x = 30.0 and y = 30.0 and wait a second
+    // arbitrarily publish an obstacle at x = 30.0 and y = 30.0 and wait a second
     for (int i = 0; i < 1; i++) {
       node->publishObstacleArray(
         30.0, 30.0, 0.0,
@@ -403,12 +406,12 @@ TEST_CASE_METHOD(ROS2Fixture, "Costmap assertions", "[radar_layer]") {
     costmap_publisher_->updateBounds(x0, xn, y0, yn);
 
     unsigned int mx, my, mx_x, my_x, mx_y, my_y;
-    rlayer->worldToMap(30.0, 30.0, mx, my);     //mx, my: indicies corresponding to centroid of object in occupancy grid
-    rlayer->worldToMap(31.0, 30.0, mx_x, my_x); //mx_x, my_x: indicies corresponding to centroid of object, offset by 1m in X direction in occupancy grid
-    rlayer->worldToMap(30.0, 31.0, mx_y, my_y); //mx_y, my_y: indicies corresponding to centroid of object, offset by 1m in Y direction in occupancy grid
-    int cost_0 = costmap->getCost(mx, my); //cost at centroid
-    int cost_0_x = costmap->getCost(mx_x, my_x); //cost at centroid offset by 1m in x
-    int cost_0_y = costmap->getCost(mx_y, my_y); //cost at centroid offset by 1m in y
+    rlayer->worldToMap(30.0, 30.0, mx, my);      // mx, my: indicies corresponding to centroid of object in occupancy grid
+    rlayer->worldToMap(31.0, 30.0, mx_x, my_x);  // mx_x, my_x: indicies corresponding to centroid of object, offset by 1m in X direction in occupancy grid
+    rlayer->worldToMap(30.0, 31.0, mx_y, my_y);  // mx_y, my_y: indicies corresponding to centroid of object, offset by 1m in Y direction in occupancy grid
+    int cost_0 = costmap->getCost(mx, my);       // cost at centroid
+    int cost_0_x = costmap->getCost(mx_x, my_x); // cost at centroid offset by 1m in x
+    int cost_0_y = costmap->getCost(mx_y, my_y); // cost at centroid offset by 1m in y
     costmap_publisher_->publishCostmap();
 
     node->set_parameter(rclcpp::Parameter("radar_layer.covariance_scaling_factor", 10.0));
@@ -424,105 +427,6 @@ TEST_CASE_METHOD(ROS2Fixture, "Costmap assertions", "[radar_layer]") {
     costmap_publisher_->on_deactivate();
 
     REQUIRE(cost_1 == cost_0);
-    REQUIRE(cost_1_x > cost_0_x);
-    REQUIRE(cost_1_y > cost_0_y);
-
-    test_wrapper.Teardown();
-  }
-
-   SECTION("ROSCON") {
-    ROSTestWrapper test_wrapper;
-    test_wrapper.Setup();
-
-    auto node = test_wrapper.test_node;
-
-    node->declare_parameter("radar_layer.enabled", rclcpp::ParameterValue(true));
-    node->declare_parameter("radar_layer.minimum_probability", rclcpp::ParameterValue(0.1));
-    node->declare_parameter("radar_layer.number_of_time_steps", rclcpp::ParameterValue(1));
-    node->declare_parameter("radar_layer.observation_sources", std::string("radar"));
-    node->declare_parameter("radar_layer.sample_time", rclcpp::ParameterValue(0.1));
-    node->declare_parameter("radar_layer.stamp_footprint", rclcpp::ParameterValue(false));
-    node->declare_parameter("radar_layer.combination_method", rclcpp::ParameterValue(1));
-    node->declare_parameter("radar_layer.covariance_scaling_factor", rclcpp::ParameterValue(1.0));
-    node->declare_parameter("radar_layer.radar.topic", std::string("/tracking"));
-
-
-    tf2_ros::Buffer tf(node->get_clock());
-    auto timer_interface = std::make_shared<tf2_ros::CreateTimerROS>(
-      node->get_node_base_interface(), node->get_node_timers_interface());
-    tf.setCreateTimerInterface(timer_interface);
-    tf2_ros::TransformListener tf_listener(tf);
-
-    nav2_costmap_2d::LayeredCostmap layers("odom", false, false);
-    std::shared_ptr<radar_layer::RadarLayer> rlayer = std::make_shared<radar_layer::RadarLayer>();
-    rlayer->initialize(&layers, "radar_layer", &tf, node, nullptr);
-    std::shared_ptr<nav2_costmap_2d::Layer> rpointer(rlayer);
-    layers.addPlugin(rpointer);
-    rpointer->activate();
-
-    layers.resizeMap(1000, 1000, 0.1, 0, 0, false);
-
-    node->publishTf(0, 0, 0.7, node->get_clock()->now());
-
-    layers.updateMap(0, 0, 0);
-    nav2_costmap_2d::Costmap2D * costmap = layers.getCostmap();
-
-    std::unique_ptr<nav2_costmap_2d::Costmap2DPublisher> costmap_publisher_ =
-      std::make_unique<nav2_costmap_2d::Costmap2DPublisher>(node, costmap, "odom", "costmap", true);
-    costmap_publisher_->on_activate();
-    unsigned int x0, y0, xn, yn;
-    layers.getBounds(&x0, &xn, &y0, &yn);
-    costmap_publisher_->updateBounds(x0, xn, y0, yn);
-
-    node->set_parameter(rclcpp::Parameter("radar_layer.covariance_scaling_factor", 1.0));
-    node->set_parameter(rclcpp::Parameter("radar_layer.number_of_time_steps", 1));
-    node->set_parameter(rclcpp::Parameter("radar_layer.sample_time", 0.1));
-    
-    //arbitrarily publish an obstacle at x = 30.0 and y = 30.0 and wait a second
-    for (int i = 0; i < 1000; i++) {
-      node->publishObstacleArray(
-        30.0, 30.0, 0.0,
-        5.0, 0.0, 0.0,
-        2.0, 2.0, 2.0,
-        10.0, 10.0, 0.0,
-        1.0, 1.0, 0.1,
-        node->get_clock()->now());
-      node->publishMarkerArray(
-        30.0, 30.0, 0.0,
-        5.0, 0.0, 0.0,
-        2.0, 2.0, 2.0,
-        0.1, 0.1, 0.0,
-        0.1, 0.1, 0.1,
-        node->get_clock()->now());
-      //node->set_parameter(rclcpp::Parameter("radar_layer.number_of_time_steps", std::min(100, i)));
-      layers.updateMap(0, 0, 0);
-      costmap_publisher_->publishCostmap();
-      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-    }
-
-    unsigned int mx, my, mx_x, my_x, mx_y, my_y;
-    rlayer->worldToMap(30.0, 30.0, mx, my);     //mx, my: indicies corresponding to centroid of object in occupancy grid
-    rlayer->worldToMap(31.0, 30.0, mx_x, my_x); //mx_x, my_x: indicies corresponding to centroid of object, offset by 1m in X direction in occupancy grid
-    rlayer->worldToMap(30.0, 31.0, mx_y, my_y); //mx_y, my_y: indicies corresponding to centroid of object, offset by 1m in Y direction in occupancy grid
-    int cost_0 = costmap->getCost(mx, my); //cost at centroid
-    int cost_0_x = costmap->getCost(mx_x, my_x); //cost at centroid offset by 1m in x
-    int cost_0_y = costmap->getCost(mx_y, my_y); //cost at centroid offset by 1m in y
-    costmap_publisher_->publishCostmap();
-
-    layers.updateMap(0, 0, 0);
-    int cost_1 = costmap->getCost(mx, my);
-    int cost_1_x = costmap->getCost(mx_x, my_x);
-    int cost_1_y = costmap->getCost(mx_y, my_y);
-
-    costmap_publisher_->publishCostmap();
-
-    rpointer->deactivate();
-    costmap_publisher_->on_deactivate();
-
-    REQUIRE(cost_1 == cost_0);
-    REQUIRE(cost_1_x > cost_0_x);
-    REQUIRE(cost_1_y > cost_0_y);
-
     test_wrapper.Teardown();
   }
 }

@@ -49,17 +49,19 @@ This costmap layer expects the radar tracks to be published in the [ObstacleArra
 
 ## Configuration
 
-| Parameter | Description | 
-|-----|----|
-| `enabled` | Whether it is enabled. | 
-| `combination_method` | Enum for method to add data to master costmap. Must be 0, 1 or 2, default to 1 | 
-| `observation_sources` | namespace of sources of data | 
-| `minimum_probability` | minimum probability to place in costmap | 
-| `number_of_time_steps` | number of time steps to propogate gaussian distribution of obstacle |
-| `stamp_footprint` | Whether to use stamp footprint method or not | 
-| `sample_time` |  sample time to propogate gaussian distribution of obstacle |
-| `covariance_scaling_factor` |  A scalar to scale the covariance reported by the radar |
-| `<data source>.topic` |  Topic of data | 
+| Parameter                       | Description                                                                    |
+| ------------------------------- | ------------------------------------------------------------------------------ |
+| `enabled`                       | Whether it is enabled.                                                         |
+| `combination_method`            | Enum for method to add data to master costmap. Must be 0, 1 or 2, default to 1 |
+| `observation_sources`           | namespace of sources of data                                                   |
+| `minimum_probability`           | minimum probability to place in costmap                                        |
+| `number_of_time_steps`          | number of time steps to propogate gaussian distribution of obstacle            |
+| `stamp_footprint`               | Whether to use stamp footprint method or not                                   |
+| `sample_time`                   | sample time to propogate gaussian distribution of obstacle                     |
+| `<data source>.topic`           | Topic of data                                                                  |
+| `<data source>.datatype`        | Datatype of topic                                                              |
+| `<data source>.sensor_frame`    | TF frame                                                                       |
+| `<data source>.qos_deadline_hz` | Sets the QOS deadline on your data source                                      |
 
 Example fully-described XML with default parameter values:
 
