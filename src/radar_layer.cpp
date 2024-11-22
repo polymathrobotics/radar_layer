@@ -13,7 +13,8 @@ RadarLayer::RadarLayer()
 }
 
 RadarLayer::~RadarLayer()
-{}
+{
+}
 
 void RadarLayer::onInitialize()
 {
@@ -70,15 +71,22 @@ void RadarLayer::onInitialize()
 
   while (ss >> source) {
     std::string topic, sensor_frame, data_type;
+    double qos_deadline_hz;
 
     declareParameter(
       source + "." + "topic",
       rclcpp::ParameterValue(source));
 
+    declareParameter(
+      source + "." + "qos_deadline_hz",
+      rclcpp::ParameterValue(1.0));
+
     node->get_parameter(name_ + "." + source + "." + "topic", topic);
+    node->get_parameter(name_ + "." + source + "." + "qos_deadline_hz", qos_deadline_hz);
 
     rmw_qos_profile_t custom_qos_profile = rmw_qos_profile_sensor_data;
     custom_qos_profile.depth = 50;
+    custom_qos_profile.deadline = convertHzToRmwTimeS(qos_deadline_hz);
 
     detection_buffers_.push_back(
       std::shared_ptr<nav2_dynamic_msgs::msg::ObstacleArray>(
@@ -150,7 +158,6 @@ void RadarLayer::updateBounds(
   geometry_msgs::msg::PointStamped point_in_global_frame;
   geometry_msgs::msg::PointStamped point_in_radar_frame;
 
-
   std::lock_guard<Costmap2D::mutex_t> guard(*getMutex());
   resetMaps();
   if (rolling_window_) {
@@ -194,10 +201,10 @@ void RadarLayer::updateCosts(
   }
 
   switch (combination_method_) {
-    case 0:  // Overwrite
+    case 0: // Overwrite
       updateWithOverwrite(master_grid, min_i, min_j, max_i, max_j);
       break;
-    case 1:  // Maximum
+    case 1: // Maximum
       updateWithMax(master_grid, min_i, min_j, max_i, max_j);
       break;
     default: // Nothing
@@ -264,7 +271,7 @@ rcl_interfaces::msg::SetParametersResult RadarLayer::dynamicParametersCallback(
         covariance_scaling_factor_ = parameter.as_double();
       }
       if (param_name == name_ + "." + "sample_time" &&
-        sample_time_  != parameter.as_double())
+        sample_time_ != parameter.as_double())
       {
         sample_time_ = parameter.as_double();
       }
@@ -335,7 +342,6 @@ void RadarLayer::predictiveCost(
   double inv_x_y;
   double inv_y_x;
   double inv_y_y;
-  
 
   getTransformCoefficients(
     global_frame_, obstacle_array->header.frame_id, dx, dy, x_x, x_y, y_x,
@@ -345,15 +351,16 @@ void RadarLayer::predictiveCost(
 
     nav2_dynamic_msgs::msg::Obstacle obstacle_0 = obstacle_array->obstacles[i];
 
-    double sqrt_2_pi_det_covariance_0 = sqrt(2 * M_PI *
+    double sqrt_2_pi_det_covariance_0 = sqrt(
+      2 * M_PI *
       (obstacle_0.position_covariance[0] + obstacle_0.size.x /
       2) *
       (obstacle_0.position_covariance[4] + obstacle_0.size.y /
       2));
 
     Eigen::Matrix2d covariance = projectCovariance(obstacle_0, sample_time_, number_of_time_steps_);
-    covariance(0, 0) += obstacle_0.size.x / 2; //TODO: MULTIPLY WITH HYPERPARAMETER HERE
-    covariance(1, 1) += obstacle_0.size.y / 2; //TODO: MULTIPLY WITH HYPERPARAMETER HERE
+    covariance(0, 0) += obstacle_0.size.x / 2;   // TODO: MULTIPLY WITH HYPERPARAMETER HERE
+    covariance(1, 1) += obstacle_0.size.y / 2;   // TODO: MULTIPLY WITH HYPERPARAMETER HERE
 
     Eigen::Matrix2d inv_covariance = Eigen::MatrixXd::Zero(2, 2);
     inv_covariance(0, 0) = 1 / covariance(0, 0);
@@ -363,8 +370,10 @@ void RadarLayer::predictiveCost(
     double inv_sqrt_2_pi_det_covariance = 1 / sqrt_2_pi_det_covariance;
     double covariance_ratio = sqrt_2_pi_det_covariance_0 / sqrt_2_pi_det_covariance;
 
-    double length = 2 * sqrt(-2 * (log(min_probability_) - log(covariance_ratio)) * covariance(0, 0)); //these should act more like the limits of the search
-    double width = 2 * sqrt(-2 * (log(min_probability_) - log(covariance_ratio)) * covariance(1, 1)); //these should act more like the limits of the search
+    double length = 2 *
+      sqrt(-2 * (log(min_probability_) - log(covariance_ratio)) * covariance(0, 0));                     // these should act more like the limits of the search
+    double width = 2 *
+      sqrt(-2 * (log(min_probability_) - log(covariance_ratio)) * covariance(1, 1));                     // these should act more like the limits of the search
     int length_in_grid = int(length / resolution_);
     int width_in_grid = int(width / resolution_);
     mean_inflation_radius_ = std::max(length_in_grid, width_in_grid);
@@ -379,12 +388,11 @@ void RadarLayer::predictiveCost(
 
       std::fill(begin(seen_), end(seen_), false);
 
-
       Eigen::Vector2d mean = projectMean(obstacle_0, sample_time_, k);
-      
+
       covariance = projectCovariance(obstacle_0, sample_time_, k);
-      covariance(0, 0) += obstacle_0.size.x / 2; //TODO: MULTIPLY WITH HYPERPARAMETER HERE
-      covariance(1, 1) += obstacle_0.size.y / 2; //TODO: MULTIPLY WITH HYPERPARAMETER HERE
+      covariance(0, 0) += obstacle_0.size.x / 2;   // TODO: MULTIPLY WITH HYPERPARAMETER HERE
+      covariance(1, 1) += obstacle_0.size.y / 2;   // TODO: MULTIPLY WITH HYPERPARAMETER HERE
 
       inv_covariance(0, 0) = 1 / covariance(0, 0);
       inv_covariance(1, 1) = 1 / covariance(1, 1);
@@ -394,12 +402,12 @@ void RadarLayer::predictiveCost(
       covariance_ratio = sqrt_2_pi_det_covariance_0 / sqrt_2_pi_det_covariance;
 
       inflation_cells_.clear();
-      inflation_cells_.resize(max_dist+1);
+      inflation_cells_.resize(max_dist + 1);
 
       computeCacheCosts(inv_covariance, inv_sqrt_2_pi_det_covariance, sqrt_2_pi_det_covariance_0);
-      
+
       geometry_msgs::msg::PointStamped mean_in_global_frame;
-      
+
       mean_in_global_frame.header.stamp = obstacle_array->header.stamp;
       mean_in_global_frame.header.frame_id = global_frame_;
       mean_in_global_frame.point.x = mean(0) * x_x + mean(1) * y_x + dx;
@@ -409,7 +417,10 @@ void RadarLayer::predictiveCost(
       auto & mean_bin = inflation_cells_[0];
       mean_bin.reserve(200);
       unsigned int mean_x_index, mean_y_index;
-      if(worldToMap(mean_in_global_frame.point.x, mean_in_global_frame.point.y, mean_x_index, mean_y_index)){;
+      if (worldToMap(
+          mean_in_global_frame.point.x, mean_in_global_frame.point.y, mean_x_index,
+          mean_y_index))
+      {
         unsigned int index = getIndex(mean_x_index, mean_y_index);
         mean_bin.emplace_back(mean_x_index, mean_y_index, mean_x_index, mean_y_index);
       }
@@ -442,7 +453,7 @@ void RadarLayer::predictiveCost(
           int index_y = std::round(std::abs(x_grid * inv_x_y + y_grid * inv_y_y));
 
           unsigned char cost = cost_matrix_[index_x][index_y];
-          if((cost/(252*sqrt_2_pi_det_covariance_0)) > min_probability_){
+          if ((cost / (252 * sqrt_2_pi_det_covariance_0)) > min_probability_) {
             unsigned char old_cost = costmap_[index];
             costmap_[index] = std::max(old_cost, cost);
 
@@ -459,7 +470,6 @@ void RadarLayer::predictiveCost(
             if (my < size_y_ - 1) {
               enqueue(index + size_x_, mx, my + 1, sx, sy);
             }
-
           }
         }
         // This level of inflation_cells_ is not needed anymore. We can free the memory
@@ -487,31 +497,34 @@ int RadarLayer::generateIntegerDistances()
 
   std::sort(
     points.begin(), points.end(),
-    [](const std::pair<int, int> & a, const std::pair<int, int> & b) -> bool {
+    [](const std::pair<int, int> & a, const std::pair<int, int> & b) -> bool
+    {
       return a.first * a.first + a.second * a.second < b.first * b.first + b.second * b.second;
-    }
-  );
+    });
 
   std::vector<std::vector<int>> distance_matrix(size, std::vector<int>(size, 0));
   std::pair<int, int> last = {0, 0};
   int level = 0;
   for (auto const & p : points) {
 
-    if (p.first * p.first + p.second * p.second != last.first * last.first + last.second * last.second)
+    if (p.first * p.first + p.second * p.second !=
+      last.first * last.first + last.second * last.second)
     {
       level++;
     }
 
     distance_matrix[p.first + r][p.second + r] = level;
     last = p;
-
   }
 
   distance_matrix_ = distance_matrix;
   return level;
 }
 
-void RadarLayer::computeCacheCosts(Eigen::MatrixXd inv_covariance, double & inv_sqrt_2_pi_det_covariance, double & sqrt_2_pi_det_covariance_0)
+void RadarLayer::computeCacheCosts(
+  Eigen::MatrixXd inv_covariance,
+  double & inv_sqrt_2_pi_det_covariance,
+  double & sqrt_2_pi_det_covariance_0)
 {
   const int r = mean_inflation_radius_ + 2;
 
@@ -525,25 +538,26 @@ void RadarLayer::computeCacheCosts(Eigen::MatrixXd inv_covariance, double & inv_
     }
   }
 
-  std::vector<std::vector<unsigned char>> cost_matrix(r+1, std::vector<unsigned char>(r+1, 0));
+  std::vector<std::vector<unsigned char>> cost_matrix(r + 1, std::vector<unsigned char>(r + 1, 0));
   Eigen::Vector2d mean(0.0, 0.0);
   Eigen::VectorXd xs(points.size());
   Eigen::VectorXd ys(points.size());
 
   for (std::size_t i = 0; i < points.size(); ++i) {
-    const auto& p = points[i];
+    const auto & p = points[i];
     double x = p.first * resolution_;
     double y = p.second * resolution_;
 
     xs(i) = x;
     ys(i) = y;
-
   }
 
-  Eigen::MatrixXd probabilities = getProbabilityBatch(mean, inv_covariance, inv_sqrt_2_pi_det_covariance, xs, ys);
+  Eigen::MatrixXd probabilities = getProbabilityBatch(
+    mean, inv_covariance,
+    inv_sqrt_2_pi_det_covariance, xs, ys);
 
   for (std::size_t i = 0; i < points.size(); ++i) {
-    const auto& p = points[i];
+    const auto & p = points[i];
     cost_matrix[p.first][p.second] = uint8_t(252 * sqrt_2_pi_det_covariance_0 * probabilities(i));
   }
 
@@ -554,11 +568,12 @@ void RadarLayer::computeCacheCosts(Eigen::MatrixXd inv_covariance, double & inv_
 
 void RadarLayer::enqueue(
   unsigned int index, unsigned int mx, unsigned int my,
-  unsigned int src_x, unsigned int src_y){
-    const unsigned int r = mean_inflation_radius_ + 2;
-    const auto dist = distance_matrix_[mx - src_x + r][my - src_y + r];
-    inflation_cells_[dist].emplace_back(mx, my, src_x, src_y);
-  }
+  unsigned int src_x, unsigned int src_y)
+{
+  const unsigned int r = mean_inflation_radius_ + 2;
+  const auto dist = distance_matrix_[mx - src_x + r][my - src_y + r];
+  inflation_cells_[dist].emplace_back(mx, my, src_x, src_y);
+}
 
 void RadarLayer::stampFootprint(
   nav2_dynamic_msgs::msg::ObstacleArray::SharedPtr obstacle_array, int number_of_objects)
@@ -576,7 +591,6 @@ void RadarLayer::stampFootprint(
   double inv_x_y;
   double inv_y_x;
   double inv_y_y;
-  
 
   getTransformCoefficients(
     global_frame_, obstacle_array->header.frame_id, dx, dy, x_x, x_y, y_x,
@@ -624,12 +638,9 @@ void RadarLayer::stampFootprint(
           costmap_[index] = LETHAL_OBSTACLE;
         }
       }
-
     }
-
   }
 }
-
 
 void RadarLayer::getTransformCoefficients(
   std::string source_frame,
@@ -680,7 +691,6 @@ void RadarLayer::getTransformCoefficients(
   inv_x_y = inverse_rotation_matrix(0, 1);
   inv_y_x = inverse_rotation_matrix(1, 0);
   inv_y_y = inverse_rotation_matrix(1, 1);
-
 }
 
 void RadarLayer::obstacleCallback(
@@ -711,8 +721,8 @@ void RadarLayer::findUuid(
   rclcpp::Duration duration = detection_time - obstacle_time;
   double dt = duration.seconds() + duration.nanoseconds() / 1e9f;
 
-  if (number_of_detections > 0) { //If there are detections
-    if (number_of_obstacles == 0) { //Empty Obstacle List, likely first detection
+  if (number_of_detections > 0) { // If there are detections
+    if (number_of_obstacles == 0) { // Empty Obstacle List, likely first detection
       *obstacles = *detections;
     } else {
       obstacles->header.stamp = detections->header.stamp;
@@ -732,7 +742,6 @@ void RadarLayer::findUuid(
 
       removeUnmatchedObstacles(number_of_obstacles, matched_indices, obstacles);
       addUnmatchedDetections(number_of_detections, matched_indices, obstacles, detections);
-
     }
   }
 }
@@ -756,7 +765,6 @@ void RadarLayer::removeUnmatchedObstacles(
       obstacles->obstacles.erase(obstacles->obstacles.begin() + index);
     }
   }
-
 }
 
 void RadarLayer::addUnmatchedDetections(
@@ -791,12 +799,12 @@ void RadarLayer::updateGaussian(
   Eigen::Vector2d detection_velocity_mean(detection.velocity.x, detection.velocity.y);
 
   Eigen::Matrix2d obstacle_position_covariance = Eigen::MatrixXd::Zero(2, 2);
-  obstacle_position_covariance(0, 0) = obstacle.position_covariance[0];//*covariance_scaling_factor_;
-  obstacle_position_covariance(1, 1) = obstacle.position_covariance[4];//*covariance_scaling_factor_;
+  obstacle_position_covariance(0, 0) = obstacle.position_covariance[0];   //*covariance_scaling_factor_;
+  obstacle_position_covariance(1, 1) = obstacle.position_covariance[4];   //*covariance_scaling_factor_;
 
   Eigen::Matrix2d obstacle_position_covariance_inv = Eigen::MatrixXd::Zero(2, 2);
-  obstacle_position_covariance_inv(0, 0) = 1 / obstacle.position_covariance[0];//*covariance_scaling_factor_;
-  obstacle_position_covariance_inv(1, 1) = 1 / obstacle.position_covariance[4];//*covariance_scaling_factor_;
+  obstacle_position_covariance_inv(0, 0) = 1 / obstacle.position_covariance[0];   //*covariance_scaling_factor_;
+  obstacle_position_covariance_inv(1, 1) = 1 / obstacle.position_covariance[4];   //*covariance_scaling_factor_;
 
   Eigen::Matrix2d obstacle_velocity_covariance = Eigen::MatrixXd::Zero(2, 2);
   obstacle_velocity_covariance(0, 0) = obstacle.velocity_covariance[0];
@@ -807,8 +815,8 @@ void RadarLayer::updateGaussian(
   obstacle_velocity_covariance_inv(1, 1) = 1 / obstacle.velocity_covariance[4];
 
   Eigen::Matrix2d detection_position_covariance = Eigen::MatrixXd::Zero(2, 2);
-  detection_position_covariance(0, 0) = detection.position_covariance[0];//*covariance_scaling_factor_;
-  detection_position_covariance(1, 1) = detection.position_covariance[4];//#*covariance_scaling_factor_;
+  detection_position_covariance(0, 0) = detection.position_covariance[0];   //*covariance_scaling_factor_;
+  detection_position_covariance(1, 1) = detection.position_covariance[4];   // #*covariance_scaling_factor_;
 
   Eigen::Matrix2d detection_position_covariance_inv = Eigen::MatrixXd::Zero(2, 2);
   detection_position_covariance_inv(0, 0) = 1 / detection_position_covariance(0, 0);
@@ -823,9 +831,15 @@ void RadarLayer::updateGaussian(
   detection_velocity_covariance_inv(1, 1) = 1 / detection_velocity_covariance(1, 1);
 
   Eigen::Matrix2d R;
-  R(0, 0) = 1.0 / (obstacle_position_covariance(0, 0) + dt * dt * obstacle_velocity_covariance(0, 0));
-  R(1, 1) = 1.0 / (obstacle_position_covariance(1, 1) + dt * dt * obstacle_velocity_covariance(1, 1));
-  // R(0,0) = 
+  R(
+    0,
+    0) = 1.0 /
+    (obstacle_position_covariance(0, 0) + dt * dt * obstacle_velocity_covariance(0, 0));
+  R(
+    1,
+    1) = 1.0 /
+    (obstacle_position_covariance(1, 1) + dt * dt * obstacle_velocity_covariance(1, 1));
+  // R(0,0) =
   //   (obstacle_position_covariance + dt * dt * obstacle_velocity_covariance).inverse();
   Eigen::Matrix2d new_position_covariance = (R + detection_position_covariance_inv).inverse();
   Eigen::Vector2d new_position_mean = new_position_covariance *
@@ -846,7 +860,6 @@ void RadarLayer::updateGaussian(
   obstacle.position_covariance[4] = new_position_covariance(1, 1);
   obstacle.velocity_covariance[0] = new_velocity_covariance(0, 0);
   obstacle.velocity_covariance[4] = new_velocity_covariance(1, 1);
-
 }
 
 Eigen::MatrixXd RadarLayer::getProbabilityBatch(
@@ -875,23 +888,21 @@ Eigen::MatrixXd RadarLayer::getProbabilityBatch(
   return probabilities;
 }
 
-
 inline double RadarLayer::getProbability(
   const Eigen::Matrix2d & inv_covariance,
   double & inv_sqrt_2_pi_det_covariance,
-  const Eigen::Vector2d &mean,
+  const Eigen::Vector2d & mean,
   double & x, double & y)
 {
   Eigen::Vector2d input(x, y);
   Eigen::Vector2d difference = input - mean;
-  double b = inv_covariance(0,0) * difference(0) * difference(0) +
-             inv_covariance(1,1) * difference(1) * difference(1) +
-             2 * inv_covariance(0,1) * difference(0) * difference(1);
+  double b = inv_covariance(0, 0) * difference(0) * difference(0) +
+    inv_covariance(1, 1) * difference(1) * difference(1) +
+    2 * inv_covariance(0, 1) * difference(0) * difference(1);
 
   double probability = (inv_sqrt_2_pi_det_covariance) * exp(-b / 2);
 
   return probability;
-
 }
 
 std::vector<size_t> RadarLayer::findUnmatchedIndices(
@@ -938,7 +949,6 @@ bool RadarLayer::batchTransform2DPoints(
   }
 
   return all_transformed;
-
 }
 
 bool RadarLayer::batchTransformPoints(
@@ -963,8 +973,7 @@ bool RadarLayer::batchTransformPoints(
 Eigen::Vector2d RadarLayer::projectMean(
   nav2_dynamic_msgs::msg::Obstacle obstacle,
   double sample_time,
-  int time_steps
-)
+  int time_steps)
 {
   Eigen::VectorXd position(2);
   Eigen::VectorXd velocity(2);
@@ -983,8 +992,7 @@ Eigen::Vector2d RadarLayer::projectMean(
 Eigen::Matrix2d RadarLayer::projectCovariance(
   nav2_dynamic_msgs::msg::Obstacle obstacle,
   double sample_time,
-  int time_steps
-)
+  int time_steps)
 {
   Eigen::MatrixXd position_covariance(2, 2);
   Eigen::MatrixXd velocity_covariance(2, 2);
@@ -995,16 +1003,31 @@ Eigen::Matrix2d RadarLayer::projectCovariance(
   velocity_covariance(0, 0) = obstacle.velocity_covariance[0];
   velocity_covariance(1, 1) = obstacle.velocity_covariance[4];
 
-          
-  if(velocity_covariance(0, 0) < 0 || velocity_covariance(1, 1) < 0){
+  if (velocity_covariance(0, 0) < 0 || velocity_covariance(1, 1) < 0) {
     RCLCPP_INFO(logger_, "NEGATIVE VELOCITY COVARIANCE");
-  }        
-
+  }
 
   position_covariance_projected = position_covariance +
     pow(time_steps * sample_time, 2) * velocity_covariance;
 
   return position_covariance_projected;
+}
+
+rmw_time_t RadarLayer::convertHzToRmwTimeS(double qos_deadline_hz)
+{
+  if (qos_deadline_hz <= 0.0) {
+    throw std::invalid_argument("qos_deadline_hz must be greater than 0");
+  }
+
+  // Convert Hz to seconds
+  double total_seconds = 1.0 / qos_deadline_hz;
+
+  // Populate rmw_time_t
+  rmw_time_t rmw_time;
+  rmw_time.sec = static_cast<uint64_t>(floor(total_seconds));                    // Whole seconds
+  rmw_time.nsec = static_cast<uint64_t>((total_seconds - rmw_time.sec) * 1e9);   // Remaining nanoseconds
+
+  return rmw_time;
 }
 
 } // namespace radar_layer
