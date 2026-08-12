@@ -32,7 +32,7 @@ jobs:
           target-ros2-distro: ${{ matrix.ros }}
           import-token: ${{ secrets.GITHUB_TOKEN }}
           vcs-repo-file-url: repos.yaml
-          package_name: radar_layer
+          package-name: radar_layer
       - uses: actions/upload-artifact@v4
         with:
           name: colcon-logs-${{ matrix.ros }}
