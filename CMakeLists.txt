@@ -30,15 +30,6 @@ find_package(message_filters REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(nav2_dynamic_msgs REQUIRED)
 
-set(dep_pkgs
-    rclcpp
-    nav2_costmap_2d
-    pluginlib
-    radar_msgs
-    message_filters
-    tf2_ros
-    nav2_dynamic_msgs)
-
 # === Build ===
 
 include_directories(include)
@@ -46,7 +37,14 @@ include_directories(include)
 add_library(${lib_name} SHARED
             src/radar_layer.cpp)
 
-ament_target_dependencies(${lib_name} ${dep_pkgs})
+ament_target_dependencies(${lib_name}
+    rclcpp
+    nav2_costmap_2d
+    pluginlib
+    radar_msgs
+    message_filters
+    tf2_ros
+    nav2_dynamic_msgs)
 
 # === Installation ===
 
@@ -65,15 +63,14 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
 
   # Unit Test
-  find_package(Catch2 2 REQUIRED)
+  find_package(Catch2 REQUIRED)
   set(test_dependencies
     Catch2
   )
   add_executable(catch_tests test/test_radar_layer.cpp)
-  target_link_libraries(catch_tests Catch2::Catch2 ${lib_name})
+  target_link_libraries(catch_tests Catch2::Catch2WithMain ${lib_name})
   ament_target_dependencies(catch_tests
-    ${test_dependencies}
-    ${dep_pkgs}
+    ${lib_name}
   )
   add_test(NAME catch_tests COMMAND catch_tests)
 endif()
@@ -83,5 +80,4 @@ endif()
 # This allows the plugin to be discovered as a plugin of required type.
 
 pluginlib_export_plugin_description_file(nav2_costmap_2d radar_layer.xml)
-ament_target_dependencies(${lib_name} ${dep_pkgs})
 ament_package()
