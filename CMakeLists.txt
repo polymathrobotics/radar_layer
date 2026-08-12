@@ -69,9 +69,6 @@ if(BUILD_TESTING)
   )
   add_executable(catch_tests test/test_radar_layer.cpp)
   target_link_libraries(catch_tests Catch2::Catch2WithMain ${lib_name})
-  ament_target_dependencies(catch_tests
-    ${lib_name}
-  )
   add_test(NAME catch_tests COMMAND catch_tests)
 endif()
 
